@@ -76,7 +76,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
    - **Host**: The IP address or hostname of your Crestron Home processor
    - **API Token**: The token you generated in the Crestron Home Setup app
    - **Update Interval**: How often to poll for updates (in seconds)
-     - Default: 30 seconds, Minimum: 10 seconds
+     - Default: 15 seconds, minimum: 10 seconds
      - Lower values provide more responsive updates but increase system load
    - **Device Types to Include**: Select which types of devices to include
      - Lights: All dimmers and switches

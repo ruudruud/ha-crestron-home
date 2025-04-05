@@ -84,6 +84,8 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         DEVICE_TYPE_LIGHT,
                         DEVICE_TYPE_SHADE,
                         DEVICE_TYPE_SCENE,
+                        DEVICE_TYPE_BINARY_SENSOR,
+                        DEVICE_TYPE_SENSOR,
                     ]
                 
                 return self.async_create_entry(title=info["title"], data=user_input)
@@ -116,6 +118,8 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         DEVICE_TYPE_LIGHT,
                         DEVICE_TYPE_SHADE,
                         DEVICE_TYPE_SCENE,
+                        DEVICE_TYPE_BINARY_SENSOR,
+                        DEVICE_TYPE_SENSOR,
                     ]): selector.SelectSelector(
                         selector.SelectSelectorConfig(
                             options=[
@@ -175,7 +179,7 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
         current_enabled_types = self.config_entry.data.get(
-            CONF_ENABLED_DEVICE_TYPES, [DEVICE_TYPE_LIGHT, DEVICE_TYPE_SHADE, DEVICE_TYPE_SCENE]
+            CONF_ENABLED_DEVICE_TYPES, [DEVICE_TYPE_LIGHT, DEVICE_TYPE_SHADE, DEVICE_TYPE_SCENE, DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_SENSOR]
         )
 
         return self.async_show_form(

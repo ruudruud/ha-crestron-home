@@ -21,7 +21,7 @@ CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_ENABLED_DEVICE_TYPES: Final = "enabled_device_types"
 
 # Defaults
-DEFAULT_UPDATE_INTERVAL: Final = 30
+DEFAULT_UPDATE_INTERVAL: Final = 15
 MIN_UPDATE_INTERVAL: Final = 10
 
 # Device types
