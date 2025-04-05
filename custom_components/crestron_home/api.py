@@ -296,6 +296,18 @@ class CrestronClient:
         response = await self._api_request("GET", f"/sensors/{sensor_id}")
         return response.get("sensors", [{}])[0]
 
+    async def get_rooms(self) -> List[Dict[str, Any]]:
+        """Get all rooms from the Crestron Home system."""
+        try:
+            response = await self._api_request("GET", "/rooms")
+            rooms = response.get("rooms", [])
+            # Update the stored rooms data
+            self.rooms = rooms
+            return rooms
+        except Exception as error:
+            _LOGGER.error("Error getting rooms: %s", error)
+            return []
+
     @staticmethod
     def crestron_to_percentage(value: int) -> int:
         """Convert a Crestron range value (0-65535) to percentage (0-100)."""

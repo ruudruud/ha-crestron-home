@@ -38,6 +38,16 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
         self.enabled_device_types = enabled_device_types
         self.devices: List[Dict[str, Any]] = []
         self.platforms = []
+        
+        # Add counter for room updates
+        self.update_counter = 0
+        self.room_update_frequency = 10  # Check room names every 10 cycles
+        
+        # Store room name mapping for change detection
+        self.room_names = {}  # room_id -> room_name mapping
+        
+        # Store entity references for name updates
+        self.entities = []
 
         super().__init__(
             hass,
@@ -49,6 +59,12 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via API client."""
         try:
+            # Increment counter
+            self.update_counter += 1
+            
+            # Check if it's time to refresh room data
+            refresh_rooms = (self.update_counter % self.room_update_frequency == 0)
+            
             _LOGGER.debug("Updating data with enabled device types: %s", self.enabled_device_types)
             
             # Get all devices and sensors from the Crestron Home system
@@ -56,6 +72,10 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
                 self.client.get_devices(self.enabled_device_types),
                 self.client.get_sensors(),
             )
+            
+            # Check for room name changes if needed
+            if refresh_rooms:
+                await self._refresh_room_names()
             
             self.devices = results[0]
             sensors_data = results[1]
@@ -146,3 +166,46 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
         
         except Exception as error:
             raise UpdateFailed(f"Unexpected error: {error}")
+            
+    async def _refresh_room_names(self) -> None:
+        """Refresh room names and update entities if needed."""
+        try:
+            # Fetch latest room data
+            rooms = await self.client.get_rooms()
+            
+            # Create new room_id -> name mapping
+            new_room_names = {room.get("id"): room.get("name", "") for room in rooms}
+            
+            # Check for changes
+            room_changes = {}
+            for room_id, new_name in new_room_names.items():
+                old_name = self.room_names.get(room_id)
+                if old_name is not None and old_name != new_name:
+                    room_changes[room_id] = (old_name, new_name)
+                    _LOGGER.info(
+                        "Room name changed: %s -> %s (ID: %s)",
+                        old_name, new_name, room_id
+                    )
+            
+            # Update stored room names
+            self.room_names = new_room_names
+            
+            # If we have changes and registered entities, update them
+            if room_changes and self.entities:
+                for entity in self.entities:
+                    if hasattr(entity, "room_id") and entity.room_id in room_changes:
+                        await entity.async_update_room_name(room_changes[entity.room_id][1])
+        
+        except Exception as error:
+            _LOGGER.error("Error refreshing room names: %s", error)
+    
+    def register_entity(self, entity) -> None:
+        """Register an entity for room name updates."""
+        if entity not in self.entities:
+            self.entities.append(entity)
+            
+            # Store initial room name if available
+            if hasattr(entity, "room_id") and entity.room_id is not None:
+                room_name = entity._device_info.get("roomName", "")
+                if room_name:
+                    self.room_names[entity.room_id] = room_name
