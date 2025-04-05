@@ -82,6 +82,17 @@ class CrestronHomeBaseLight(CoordinatorEntity, LightEntity):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # Find the device in the coordinator data
+        for device in self.coordinator.data.get(DEVICE_TYPE_LIGHT, []):
+            if device["id"] == self._device["id"]:
+                return device.get("connectionStatus") == "online"
+        
+        # If device not found, use the stored state
+        return self._device.get("connectionStatus") == "online"
 
     @property
     def is_on(self) -> bool:

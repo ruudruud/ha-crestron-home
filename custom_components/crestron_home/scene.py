@@ -72,6 +72,20 @@ class CrestronHomeScene(Scene):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
+    
+    @property
+    def available(self) -> bool:
+        """Return if entity is available."""
+        # For scenes, we check if the device is in the coordinator data
+        # Scenes don't have a connection status like physical devices,
+        # but we can still check if they're in the latest data
+        for device in self.coordinator.data.get(DEVICE_TYPE_SCENE, []):
+            if device["id"] == self._device["id"]:
+                # If the scene is in the latest data, it's available
+                return True
+        
+        # If the scene is not found in the latest data, it's unavailable
+        return False
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""
