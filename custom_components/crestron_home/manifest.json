@@ -1,12 +1,12 @@
 {
   "domain": "crestron_home",
   "name": "Crestron Home",
-  "codeowners": ["@yourusername"],
+  "codeowners": ["@ruudruud"],
   "config_flow": true,
-  "documentation": "https://github.com/yourusername/ha-crestron-home",
+  "documentation": "https://github.com/ruudruud/ha-crestron-home",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/yourusername/ha-crestron-home/issues",
+  "issue_tracker": "https://github.com/ruudruud/ha-crestron-home/issues",
   "loggers": ["custom_components.crestron_home"],
   "requirements": ["aiohttp>=3.8.0"],
   "version": "0.1.1"

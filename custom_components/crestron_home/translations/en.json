@@ -1,4 +1,21 @@
 {
+  "entity": {
+    "cover": {
+      "crestron_home": {
+        "name": "Shades"
+      }
+    },
+    "light": {
+      "crestron_home": {
+        "name": "Lights"
+      }
+    },
+    "scene": {
+      "crestron_home": {
+        "name": "Scenes"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {

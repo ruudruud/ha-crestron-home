@@ -1,12 +1,10 @@
 # Home Assistant Integration for Crestron Home
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
-[![GitHub Release](https://img.shields.io/github/release/yourusername/ha-crestron-home.svg)](https://github.com/yourusername/ha-crestron-home/releases)
-[![GitHub License](https://img.shields.io/github/license/yourusername/ha-crestron-home.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/release/ruudruud/ha-crestron-home.svg)](https://github.com/ruudruud/ha-crestron-home/releases)
+[![GitHub License](https://img.shields.io/github/license/ruudruud/ha-crestron-home.svg)](LICENSE)
 
 This repository contains a custom component for Home Assistant that integrates with Crestron Home systems. It allows you to control your Crestron Home devices (lights, shades, scenes) through Home Assistant.
-
-![Crestron Home Integration](https://raw.githubusercontent.com/yourusername/ha-crestron-home/main/images/crestron-home-integration.png)
 
 ## Overview
 
@@ -41,6 +39,8 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 ## Configuration
 
 ### Getting an API Token
+
+![Crestron Home Integration](https://raw.githubusercontent.com/ruudruud/ha-crestron-home/main/images/web-api-settings.png)
 
 1. Open the Crestron Home Setup app
 2. Go to Settings > System Settings > Web API
@@ -159,4 +159,4 @@ See the [Changelog](CHANGELOG.md) for a history of changes to this integration.
 
 ## Acknowledgments
 
-This project was inspired by and adapted from the [Homebridge Crestron Home plugin](https://github.com/yourusername/homebridge-crestron-home).
+This project was inspired by and adapted from the [Homebridge Crestron Home plugin](https://github.com/evgolsh/homebridge-crestron-home).
