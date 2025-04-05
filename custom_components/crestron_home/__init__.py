@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.device_registry import async_get as async_get_device_registry
 
 from .api import CrestronApiError, CrestronClient
 from .const import (
@@ -56,6 +57,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
+    
+    # Register the Crestron Home controller as a device
+    device_registry = async_get_device_registry(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, host)},
+        name=f"Crestron Home Controller ({host})",
+        manufacturer=MANUFACTURER,
+        model=MODEL,
+    )
 
     # Set up only enabled platforms
     enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
