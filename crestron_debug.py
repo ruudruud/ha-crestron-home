@@ -1,36 +1,48 @@
 #!/usr/bin/env python3
-"""Test script for the Crestron Home client.
+"""Debugging tool for the Crestron Home system.
 
-This script can be used to test the connection to a Crestron Home system
-and verify that the client can retrieve devices and control them.
+This script provides a command-line interface for testing and debugging
+connections to a Crestron Home system. It allows you to:
+- Verify connectivity to your Crestron Home system
+- List and filter devices by type and room
+- View device status and properties
+- Examine raw API responses for troubleshooting
+
+This tool is particularly useful for:
+1. Debugging connection issues with your Crestron Home system
+2. Verifying device discovery and configuration
+3. Understanding the data structure of the Crestron Home API
+4. Testing changes to the Home Assistant integration
 
 Usage:
-  python test_client.py [options]
+  python crestron_debug.py [options]
 
 Options:
   --host HOST         Hostname or IP address of the Crestron Home system (overrides .env)
   --token TOKEN       Authentication token for the Crestron Home system (overrides .env)
-  --room ROOM         Filter lights by room name
+  --room ROOM         Filter devices by room name
   --sort {name,room,status,level}
-                      Sort lights by the specified field (default: room)
+                      Sort devices by the specified field (default: room)
   --all               Show all devices, not just lights
   --sensors           Show only sensors (occupancy, door, photo)
   --raw               Show raw API data instead of formatted output
   --help              Show this help message and exit
 
 Examples:
-  python test_client.py --room "Living Room" --sort level
-  python test_client.py --room "Bijkeuken" --raw
-  python test_client.py --sensors --room "Living Room"
+  python crestron_debug.py --room "Living Room" --sort level
+  python crestron_debug.py --room "Bijkeuken" --raw
+  python crestron_debug.py --sensors --room "Living Room"
+  python crestron_debug.py --all --sort status
 """
 
 import argparse
 import asyncio
+import json
 import os
 import ssl
 import sys
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import aiohttp
 from dotenv import load_dotenv
@@ -58,13 +70,33 @@ ANSI_RESET = "\033[0m"
 
 
 class CrestronClient:
-    """API Client for Crestron Home."""
+    """API Client for Crestron Home.
+    
+    This class handles communication with the Crestron Home API, including:
+    - Authentication
+    - API requests
+    - Data conversion
+    - Device information retrieval
+    
+    Attributes:
+        host: Hostname or IP address of the Crestron Home system
+        api_token: Authentication token for the Crestron Home API
+        base_url: Base URL for API requests
+        auth_key: Current authentication key (obtained after login)
+        last_login: Timestamp of the last successful login
+        rooms: List of rooms retrieved from the API
+    """
 
     # Constants for Crestron level conversion
     MAX_LEVEL = 65535
 
     def __init__(self, host: str, token: str) -> None:
-        """Initialize the API client."""
+        """Initialize the API client.
+        
+        Args:
+            host: Hostname or IP address of the Crestron Home system
+            token: Authentication token for the Crestron Home API
+        """
         self.host = host
         self.api_token = token
         self.base_url = f"https://{host}/cws/api"
@@ -74,7 +106,17 @@ class CrestronClient:
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def login(self) -> None:
-        """Login to the Crestron Home system."""
+        """Login to the Crestron Home system.
+        
+        This method authenticates with the Crestron Home API and obtains
+        an authentication key for subsequent requests. It handles SSL
+        certificate verification and session management.
+        
+        Raises:
+            CrestronConnectionError: If connection to the Crestron Home system fails
+            CrestronAuthError: If authentication fails
+            CrestronApiError: For other API-related errors
+        """
         # Check if we need to login (session expires after 10 minutes)
         current_time = time.time()
         if self.auth_key and (current_time - self.last_login) < 9 * 60:  # 9 minutes
@@ -133,7 +175,20 @@ class CrestronClient:
     async def _api_request(
         self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Make an API request to the Crestron Home system."""
+        """Make an API request to the Crestron Home system.
+        
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint (e.g., "/devices")
+            data: Optional JSON data to send with the request
+            
+        Returns:
+            Dict containing the JSON response from the API
+            
+        Raises:
+            CrestronAuthError: If authentication fails or expires
+            CrestronApiError: For other API-related errors
+        """
         await self.login()
         
         if not self.auth_key or not self._session:
@@ -165,20 +220,42 @@ class CrestronClient:
 
     @staticmethod
     def crestron_to_percentage(value: int) -> int:
-        """Convert a Crestron range value (0-65535) to percentage (0-100)."""
+        """Convert a Crestron range value (0-65535) to percentage (0-100).
+        
+        Args:
+            value: Crestron level value (0-65535)
+            
+        Returns:
+            Percentage value (0-100)
+        """
         if value <= 0:
             return 0
         return round((value / CrestronClient.MAX_LEVEL) * 100)
 
     @staticmethod
     def percentage_to_crestron(value: int) -> int:
-        """Convert a percentage (0-100) to Crestron range value (0-65535)."""
+        """Convert a percentage (0-100) to Crestron range value (0-65535).
+        
+        Args:
+            value: Percentage value (0-100)
+            
+        Returns:
+            Crestron level value (0-65535)
+        """
         if value <= 0:
             return 0
         return round((CrestronClient.MAX_LEVEL * value) / 100)
 
     async def get_devices(self) -> List[Dict[str, Any]]:
-        """Get all devices from the Crestron Home system."""
+        """Get all devices from the Crestron Home system.
+        
+        This method retrieves information about all devices, scenes, and shades
+        from the Crestron Home system and normalizes the data into a consistent
+        format.
+        
+        Returns:
+            List of device dictionaries with normalized properties
+        """
         print("Getting devices from Crestron Home...")
         
         try:
@@ -269,7 +346,14 @@ class CrestronClient:
 
 
 def load_config() -> Tuple[str, str, List[str]]:
-    """Load configuration from .env file or environment variables."""
+    """Load configuration from .env file or environment variables.
+    
+    Returns:
+        Tuple containing:
+        - host: Hostname or IP address of the Crestron Home system
+        - token: Authentication token for the Crestron Home API
+        - enabled_device_types: List of enabled device types
+    """
     # Load .env file if it exists
     load_dotenv()
     
@@ -282,9 +366,13 @@ def load_config() -> Tuple[str, str, List[str]]:
 
 
 def parse_arguments() -> argparse.Namespace:
-    """Parse command line arguments."""
+    """Parse command line arguments.
+    
+    Returns:
+        Namespace containing the parsed arguments
+    """
     parser = argparse.ArgumentParser(
-        description="Test script for the Crestron Home client",
+        description="Debugging tool for the Crestron Home system",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     
@@ -298,13 +386,13 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument(
         "--room", 
-        help="Filter lights by room name"
+        help="Filter devices by room name"
     )
     parser.add_argument(
         "--sort", 
         choices=["name", "room", "status", "level"],
         default="room",
-        help="Sort lights by the specified field (default: room)"
+        help="Sort devices by the specified field (default: room)"
     )
     parser.add_argument(
         "--all", 
@@ -325,28 +413,33 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def print_light_table(lights: List[Dict[str, Any]], sort_by: str = "room") -> None:
-    """Print a formatted table of lights."""
-    if not lights:
-        print("No lights found.")
+def print_light_table(devices: List[Dict[str, Any]], sort_by: str = "room") -> None:
+    """Print a formatted table of devices.
+    
+    Args:
+        devices: List of device dictionaries
+        sort_by: Field to sort by (name, room, status, or level)
+    """
+    if not devices:
+        print("No devices found.")
         return
     
-    # Sort lights based on the specified field
+    # Sort devices based on the specified field
     if sort_by == "name":
-        lights.sort(key=lambda x: x["name"])
+        devices.sort(key=lambda x: x["name"])
     elif sort_by == "room":
-        lights.sort(key=lambda x: (x["roomName"], x["name"]))
+        devices.sort(key=lambda x: (x["roomName"], x["name"]))
     elif sort_by == "status":
-        lights.sort(key=lambda x: (not x["level"] > 0, x["roomName"], x["name"]))
+        devices.sort(key=lambda x: (not x["level"] > 0, x["roomName"], x["name"]))
     elif sort_by == "level":
-        lights.sort(key=lambda x: (x["level"], x["roomName"], x["name"]), reverse=True)
+        devices.sort(key=lambda x: (x["level"], x["roomName"], x["name"]), reverse=True)
     
     # Calculate column widths
-    id_width = max(len("ID"), max(len(str(light["id"])) for light in lights))
-    room_width = max(len("Room"), max(len(light["roomName"]) for light in lights))
-    name_width = max(len("Name"), max(len(light["name"].replace(light["roomName"], "").strip()) for light in lights))
-    type_width = max(len("Type"), max(len(light["type"]) for light in lights))
-    conn_width = max(len("Connection"), max(len(light["connectionStatus"]) for light in lights))
+    id_width = max(len("ID"), max(len(str(device["id"])) for device in devices))
+    room_width = max(len("Room"), max(len(device["roomName"]) for device in devices))
+    name_width = max(len("Name"), max(len(device["name"].replace(device["roomName"], "").strip()) for device in devices))
+    type_width = max(len("Type"), max(len(device["type"]) for device in devices))
+    conn_width = max(len("Connection"), max(len(device["connectionStatus"]) for device in devices))
     
     # Print header
     header = (
@@ -361,28 +454,28 @@ def print_light_table(lights: List[Dict[str, Any]], sort_by: str = "room") -> No
     print("\n" + header)
     print("-" * len(header.replace(ANSI_BOLD, "").replace(ANSI_RESET, "")))
     
-    # Print each light
+    # Print each device
     current_room = ""
-    for light in lights:
+    for device in devices:
         # Extract the name without the room name prefix
-        name = light["name"].replace(light["roomName"], "").strip()
+        name = device["name"].replace(device["roomName"], "").strip()
         
         # Add a separator between rooms
-        if sort_by == "room" and light["roomName"] != current_room:
+        if sort_by == "room" and device["roomName"] != current_room:
             if current_room:  # Not the first room
                 print("-" * len(header.replace(ANSI_BOLD, "").replace(ANSI_RESET, "")))
-            current_room = light["roomName"]
+            current_room = device["roomName"]
         
         # Determine status color
-        status_color = ANSI_GREEN if light["level"] > 0 else ANSI_RED
-        status_text = f"{status_color}{'ON' if light['level'] > 0 else 'OFF'}{ANSI_RESET}"
+        status_color = ANSI_GREEN if device["level"] > 0 else ANSI_RED
+        status_text = f"{status_color}{'ON' if device['level'] > 0 else 'OFF'}{ANSI_RESET}"
         
         # Calculate brightness percentage
-        level_percent = CrestronClient.crestron_to_percentage(light["level"])
-        level_text = f"{level_percent}%" if light["type"] == "Dimmer" else "N/A"
+        level_percent = CrestronClient.crestron_to_percentage(device["level"])
+        level_text = f"{level_percent}%" if device["type"] == "Dimmer" else "N/A"
         
         # Determine connection status color
-        conn_status = light["connectionStatus"]
+        conn_status = device["connectionStatus"]
         if conn_status == "online":
             conn_text = f"{ANSI_GREEN}{conn_status}{ANSI_RESET}"
         elif conn_status == "offline":
@@ -390,12 +483,12 @@ def print_light_table(lights: List[Dict[str, Any]], sort_by: str = "room") -> No
         else:
             conn_text = conn_status
         
-        # Print the light information
+        # Print the device information
         print(
-            f"{light['id']:<{id_width}} | "
-            f"{ANSI_BLUE}{light['roomName']:<{room_width}}{ANSI_RESET} | "
+            f"{device['id']:<{id_width}} | "
+            f"{ANSI_BLUE}{device['roomName']:<{room_width}}{ANSI_RESET} | "
             f"{name:<{name_width}} | "
-            f"{light['type']:<{type_width}} | "
+            f"{device['type']:<{type_width}} | "
             f"{status_text:<8} | "
             f"{level_text:<10} | "
             f"{conn_text:<{conn_width + len(ANSI_GREEN) + len(ANSI_RESET) if conn_status in ['online', 'offline'] else conn_width}}"
@@ -403,7 +496,14 @@ def print_light_table(lights: List[Dict[str, Any]], sort_by: str = "room") -> No
 
 
 async def get_raw_api_data(client: CrestronClient) -> Dict[str, Any]:
-    """Get raw API data from the Crestron Home system."""
+    """Get raw API data from the Crestron Home system.
+    
+    Args:
+        client: Initialized CrestronClient instance
+        
+    Returns:
+        Dictionary containing raw API responses for rooms, scenes, devices, shades, and sensors
+    """
     # Get rooms, scenes, devices, shades, and sensors in parallel
     results = await asyncio.gather(
         client._api_request("GET", "/rooms"),
@@ -421,10 +521,14 @@ async def get_raw_api_data(client: CrestronClient) -> Dict[str, Any]:
         "sensors": results[4],
     }
 
+
 def print_raw_data_for_room(raw_data: Dict[str, Any], room_name: str) -> None:
-    """Print raw API data for a specific room."""
-    import json
+    """Print raw API data for a specific room.
     
+    Args:
+        raw_data: Dictionary containing raw API responses
+        room_name: Name of the room to filter by
+    """
     # Find the room ID for the specified room
     room_id = None
     room_data = None
@@ -487,8 +591,63 @@ def print_raw_data_for_room(raw_data: Dict[str, Any], room_name: str) -> None:
         print(f"\n{ANSI_BOLD}Raw Sensor Data ({len(room_sensors)} sensors):{ANSI_RESET}")
         print(json.dumps(room_sensors, indent=2))
 
+
+async def process_sensors(client: CrestronClient) -> List[Dict[str, Any]]:
+    """Process sensors from the Crestron Home system.
+    
+    Args:
+        client: Initialized CrestronClient instance
+        
+    Returns:
+        List of processed sensor dictionaries
+    """
+    # Get sensors directly from the API
+    sensors_data = await client._api_request("GET", "/sensors")
+    sensors = sensors_data.get("sensors", [])
+    
+    # Process sensors to match device format
+    processed_sensors = []
+    for sensor in sensors:
+        room_name = next(
+            (r.get("name", "") for r in client.rooms if r.get("id") == sensor.get("roomId")),
+            "",
+        )
+        
+        sensor_type = sensor.get("subType", "")
+        
+        # Create sensor info with common fields
+        sensor_info = {
+            "id": sensor.get("id"),
+            "type": sensor_type,
+            "subType": sensor_type,
+            "name": f"{room_name} {sensor.get('name', '')}".strip(),
+            "roomId": sensor.get("roomId"),
+            "roomName": room_name,
+            "level": 0,  # Default for compatibility with table display
+            "connectionStatus": sensor.get("connectionStatus", "unknown"),
+        }
+        
+        # Add sensor-specific properties
+        if sensor_type == "OccupancySensor":
+            presence = sensor.get("presence", "Unavailable")
+            sensor_info["presence"] = presence
+            # Set level for table display (ON/OFF status)
+            sensor_info["level"] = 65535 if (presence != "Vacant" and presence != "Unavailable") else 0
+        elif sensor_type == "DoorSensor":
+            sensor_info["door_status"] = sensor.get("door_status", "Closed")
+            sensor_info["battery_level"] = sensor.get("battery_level", "Normal")
+            # Set level for table display (ON/OFF status)
+            sensor_info["level"] = 65535 if sensor.get("door_status") == "Open" else 0
+        elif sensor_type == "PhotoSensor":
+            sensor_info["level"] = sensor.get("level", 0)
+        
+        processed_sensors.append(sensor_info)
+    
+    return processed_sensors
+
+
 async def main() -> None:
-    """Run the test script."""
+    """Run the debugging tool."""
     # Load configuration from .env
     env_host, env_token, enabled_device_types = load_config()
     
@@ -502,7 +661,10 @@ async def main() -> None:
     # Check if we have the required configuration
     if not host or not token:
         print("Error: Host and token are required. Provide them via .env file or command line arguments.")
-        print(f"Usage: {sys.argv[0]} --host HOST --token TOKEN")
+        print("Create a .env file with the following content:")
+        print("HOST=your-crestron-home-ip")
+        print("TOKEN=your-crestron-home-token")
+        print(f"Or use: {sys.argv[0]} --host HOST --token TOKEN")
         sys.exit(1)
     
     client = CrestronClient(host, token)
@@ -523,49 +685,7 @@ async def main() -> None:
             
             # Get sensors directly if requested
             if args.sensors:
-                # Get sensors directly from the API
-                sensors_data = await client._api_request("GET", "/sensors")
-                sensors = sensors_data.get("sensors", [])
-                
-                # Process sensors to match device format
-                processed_sensors = []
-                for sensor in sensors:
-                    room_name = next(
-                        (r.get("name", "") for r in client.rooms if r.get("id") == sensor.get("roomId")),
-                        "",
-                    )
-                    
-                    sensor_type = sensor.get("subType", "")
-                    
-                    # Create sensor info with common fields
-                    sensor_info = {
-                        "id": sensor.get("id"),
-                        "type": sensor_type,
-                        "subType": sensor_type,
-                        "name": f"{room_name} {sensor.get('name', '')}".strip(),
-                        "roomId": sensor.get("roomId"),
-                        "roomName": room_name,
-                        "level": 0,  # Default for compatibility with table display
-                        "connectionStatus": sensor.get("connectionStatus", "unknown"),
-                    }
-                    
-                    # Add sensor-specific properties
-                    if sensor_type == "OccupancySensor":
-                        presence = sensor.get("presence", "Unavailable")
-                        sensor_info["presence"] = presence
-                        # Set level for table display (ON/OFF status)
-                        sensor_info["level"] = 65535 if (presence != "Vacant" and presence != "Unavailable") else 0
-                    elif sensor_type == "DoorSensor":
-                        sensor_info["door_status"] = sensor.get("door_status", "Closed")
-                        sensor_info["battery_level"] = sensor.get("battery_level", "Normal")
-                        # Set level for table display (ON/OFF status)
-                        sensor_info["level"] = 65535 if sensor.get("door_status") == "Open" else 0
-                    elif sensor_type == "PhotoSensor":
-                        sensor_info["level"] = sensor.get("level", 0)
-                    
-                    processed_sensors.append(sensor_info)
-                
-                filtered_devices = processed_sensors
+                filtered_devices = await process_sensors(client)
                 print(f"Found {len(filtered_devices)} sensors")
             # Filter devices based on command line arguments
             elif args.all:
@@ -613,8 +733,20 @@ async def main() -> None:
             
             print_light_table(filtered_devices, args.sort)
         
+    except CrestronAuthError as e:
+        print(f"Authentication error: {e}")
+        print("Please check your authentication token and try again.")
+        sys.exit(1)
+    except CrestronConnectionError as e:
+        print(f"Connection error: {e}")
+        print("Please check your network connection and Crestron Home IP address.")
+        sys.exit(1)
+    except CrestronApiError as e:
+        print(f"API error: {e}")
+        sys.exit(1)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Unexpected error: {e}")
+        sys.exit(1)
     finally:
         await client.close()
 
