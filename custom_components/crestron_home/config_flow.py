@@ -122,7 +122,7 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                                 {"value": DEVICE_TYPE_SCENE, "label": "Scenes"},
                             ],
                             multiple=True,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            mode=selector.SelectSelectorMode.CHECKBOX,
                         ),
                     ),
                 }
@@ -204,7 +204,7 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                                 {"value": DEVICE_TYPE_SCENE, "label": "Scenes"},
                             ],
                             multiple=True,
-                            mode=selector.SelectSelectorMode.DROPDOWN,
+                            mode=selector.SelectSelectorMode.CHECKBOX,
                         ),
                     ),
                 }
