@@ -7,9 +7,9 @@ from homeassistant.const import (
 
 # Base component constants
 DOMAIN: Final = "crestron_home"
-MANUFACTURER: Final = "Crestron Electronics"
-MODEL: Final = "Crestron Home"
-ATTRIBUTION: Final = "Data provided by Crestron Home CWS"
+MANUFACTURER: Final = "Crestron"
+MODEL: Final = "Crestron Home OS"
+ATTRIBUTION: Final = "Data provided by Crestron Home® OS REST API"
 
 # Platforms
 PLATFORMS: Final = [Platform.LIGHT, Platform.COVER, Platform.SCENE]

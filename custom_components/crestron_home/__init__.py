@@ -22,6 +22,8 @@ from .const import (
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SHADE,
     DOMAIN,
+    MANUFACTURER,
+    MODEL,
     PLATFORMS,
     STARTUP_MESSAGE,
 )
