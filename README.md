@@ -153,7 +153,6 @@ When you configure the integration, you can select which device types (lights, s
 - **Adding Device Types**: When you add a device type, the integration will discover and add all devices of that type to Home Assistant.
 - **Removing Device Types**: When you remove a device type, all entities of that type will be completely removed from Home Assistant. This ensures your Home Assistant instance stays clean without orphaned entities.
 - **Re-adding Device Types**: If you later re-add a device type, the entities will be recreated with default settings.
-- **Automatic Refresh**: After making configuration changes, the integration automatically refreshes to apply the changes immediately without requiring a manual refresh.
 
 > **Note**: Any customizations you made to entities (such as custom names, icons, or area assignments) will be lost when you remove their device type from the configuration. These settings will need to be reapplied if you re-add the device type later.
 

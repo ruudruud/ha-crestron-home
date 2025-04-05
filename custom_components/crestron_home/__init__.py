@@ -190,9 +190,3 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     # Reload entry
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
-    
-    # Trigger a refresh after reload to ensure data is updated with new configuration
-    if entry.entry_id in hass.data.get(DOMAIN, {}):
-        coordinator = hass.data[DOMAIN][entry.entry_id]
-        _LOGGER.debug("Triggering data refresh after configuration change")
-        await coordinator.async_request_refresh()

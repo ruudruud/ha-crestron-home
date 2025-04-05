@@ -5,7 +5,6 @@
 ### Improvements
 
 - Fixed issue where entities remained in Home Assistant after removing their device type from configuration
-- Added automatic refresh after configuration changes to eliminate the need for manual refresh
 
 ## 0.1.2 (2025-05-04)
 
