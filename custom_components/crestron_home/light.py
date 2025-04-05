@@ -80,6 +80,7 @@ class CrestronHomeBaseLight(CoordinatorEntity, LightEntity):
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
+            suggested_area=device["roomName"],
         )
 
     @property

@@ -70,6 +70,7 @@ class CrestronHomeScene(Scene):
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
+            suggested_area=device["roomName"],
         )
 
     async def async_activate(self, **kwargs: Any) -> None:

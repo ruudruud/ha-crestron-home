@@ -17,6 +17,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 - **Scenes**: Activate Crestron Home scenes
 - **Configuration Flow**: Easy setup through the Home Assistant UI
 - **Automatic Discovery**: Automatically discovers all compatible devices
+- **Room-Based Organization**: Devices are automatically organized by room on the Home Assistant dashboard
 
 ## Installation
 
