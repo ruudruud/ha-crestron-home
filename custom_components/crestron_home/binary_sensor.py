@@ -24,6 +24,7 @@ from .const import (
     MODEL,
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
+from .entity import CrestronRoomEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ async def async_setup_entry(
     async_add_entities(binary_sensors)
 
 
-class CrestronHomeBinarySensor(CoordinatorEntity, BinarySensorEntity):
+class CrestronHomeBinarySensor(CrestronRoomEntity, CoordinatorEntity, BinarySensorEntity):
     """Representation of a Crestron Home binary sensor."""
 
     def __init__(
@@ -65,7 +66,8 @@ class CrestronHomeBinarySensor(CoordinatorEntity, BinarySensorEntity):
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
-        self._device = device
+        self._device_info = device  # Store as _device_info for CrestronRoomEntity
+        self._device = device  # Keep _device for backward compatibility
         self._attr_unique_id = f"crestron_binary_sensor_{device['id']}"
         self._attr_name = device["name"]
         self._attr_has_entity_name = False
@@ -79,6 +81,9 @@ class CrestronHomeBinarySensor(CoordinatorEntity, BinarySensorEntity):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
+        
+        # Register with coordinator for room name updates
+        coordinator.register_entity(self)
     
     @property
     def available(self) -> bool:
@@ -98,6 +103,7 @@ class CrestronHomeBinarySensor(CoordinatorEntity, BinarySensorEntity):
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
             if device["id"] == self._device["id"]:
                 self._device = device
+                self._device_info = device  # Update _device_info for CrestronRoomEntity
                 break
         
         self.async_write_ha_state()

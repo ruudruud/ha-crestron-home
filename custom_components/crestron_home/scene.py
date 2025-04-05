@@ -20,6 +20,7 @@ from .const import (
     MODEL,
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
+from .entity import CrestronRoomEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ async def async_setup_entry(
     async_add_entities(scenes)
 
 
-class CrestronHomeScene(Scene):
+class CrestronHomeScene(CrestronRoomEntity, Scene):
     """Representation of a Crestron Home scene."""
 
     def __init__(
@@ -58,7 +59,8 @@ class CrestronHomeScene(Scene):
     ) -> None:
         """Initialize the scene."""
         self.coordinator = coordinator
-        self._device = device
+        self._device_info = device  # Store as _device_info for CrestronRoomEntity
+        self._device = device  # Keep _device for backward compatibility
         self._attr_unique_id = f"crestron_scene_{device['id']}"
         self._attr_name = device["name"]
         self._attr_has_entity_name = False
@@ -72,6 +74,9 @@ class CrestronHomeScene(Scene):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
+        
+        # Register with coordinator for room name updates
+        coordinator.register_entity(self)
     
     # Scenes are always available
     @property
@@ -85,3 +90,14 @@ class CrestronHomeScene(Scene):
         
         # Request a coordinator update to get the new state
         await self.coordinator.async_request_refresh()
+    
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        for device in self.coordinator.data.get(DEVICE_TYPE_SCENE, []):
+            if device["id"] == self._device["id"]:
+                self._device = device
+                self._device_info = device  # Update _device_info for CrestronRoomEntity
+                break
+        
+        self.async_write_ha_state()
