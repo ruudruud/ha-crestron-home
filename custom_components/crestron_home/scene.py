@@ -51,6 +51,9 @@ async def async_setup_entry(
 class CrestronHomeScene(Scene):
     """Representation of a Crestron Home scene."""
 
+    # Override the entity platform name to display "Scenes" instead of "Scene"
+    _attr_translation_key = "scene"
+
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,

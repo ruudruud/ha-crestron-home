@@ -10,6 +10,7 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
+from homeassistant.const import ATTR_ENTITY_PICTURE, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -56,6 +57,9 @@ async def async_setup_entry(
 
 class CrestronHomeShade(CoordinatorEntity, CoverEntity):
     """Representation of a Crestron Home shade."""
+
+    # Override the entity platform name to display "Shades" instead of "Cover"
+    _attr_translation_key = "shade"
 
     def __init__(
         self,

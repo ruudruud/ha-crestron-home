@@ -1,17 +1,18 @@
 {
+  "title": "Crestron Home",
   "entity": {
     "cover": {
-      "crestron_home": {
+      "shade": {
         "name": "Shades"
       }
     },
     "light": {
-      "crestron_home": {
+      "light": {
         "name": "Lights"
       }
     },
     "scene": {
-      "crestron_home": {
+      "scene": {
         "name": "Scenes"
       }
     }

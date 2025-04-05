@@ -60,6 +60,9 @@ async def async_setup_entry(
 class CrestronHomeBaseLight(CoordinatorEntity, LightEntity):
     """Representation of a Crestron Home light."""
 
+    # Override the entity platform name to display "Lights" instead of "Light"
+    _attr_translation_key = "light"
+
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
