@@ -4,7 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/release/ruudruud/ha-crestron-home.svg)](https://github.com/ruudruud/ha-crestron-home/releases)
 [![GitHub License](https://img.shields.io/github/license/ruudruud/ha-crestron-home.svg)](LICENSE)
 
-This repository contains a custom component for Home Assistant that integrates with Crestron Home systems. It allows you to control your Crestron Home devices (lights, shades, scenes) through Home Assistant.
+This repository contains a custom component for Home Assistant that integrates with Crestron Home systems. It allows you to control your Crestron Home devices (lights, shades, scenes) and monitor sensors through Home Assistant.
 
 ## Overview
 
@@ -15,9 +15,22 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 - **Lights**: Control Crestron Home lights (on/off, brightness)
 - **Shades**: Control Crestron Home shades (open, close, set position)
 - **Scenes**: Activate Crestron Home scenes
+- **Sensors**: Support for various Crestron Home sensors (occupancy, door, photosensor)
 - **Configuration Flow**: Easy setup through the Home Assistant UI
 - **Automatic Discovery**: Automatically discovers all compatible devices
 - **Room-Based Organization**: Devices are automatically organized by room on the Home Assistant dashboard
+
+### Supported Device Types
+
+| Crestron Device Subtype | Home Assistant Entity | Features |
+|-------------------------|------------------------|----------|
+| Dimmer                  | Light                  | On/Off, Brightness |
+| Switch                  | Light                  | On/Off |
+| Shade                   | Cover                  | Open/Close, Position |
+| Scene                   | Scene                  | Activate |
+| OccupancySensor         | Binary Sensor         | Occupancy detection |
+| DoorSensor              | Binary Sensor         | Door open/closed status, Battery level |
+| PhotoSensor             | Sensor                | Light level measurement (lux) |
 
 ## Installation
 
@@ -58,7 +71,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
    - Host: The IP address or hostname of your Crestron Home processor
    - API Token: The token you generated in the Crestron Home Setup app
    - Update Interval: How often to poll for updates (in seconds)
-   - Device Types to Include: Select which types of devices to include (lights, shades, scenes)
+   - Device Types to Include: Select which types of devices to include (lights, shades, scenes, sensors)
 5. Click "Submit"
 
 ## Usage Examples
@@ -115,6 +128,27 @@ script:
           entity_id: scene.evening_ambiance
 ```
 
+### Example Automation: Using Sensors
+
+```yaml
+automation:
+  - alias: "Turn on lights when motion detected"
+    trigger:
+      platform: state
+      entity_id: binary_sensor.living_room_occupancy
+      to: "on"
+    condition:
+      condition: numeric_state
+      entity_id: sensor.living_room_photosensor
+      below: 10
+    action:
+      service: light.turn_on
+      target:
+        entity_id: light.living_room_main_light
+      data:
+        brightness_pct: 100
+```
+
 ## Requirements
 
 - Home Assistant Core ≥ 2024.2
@@ -148,7 +182,7 @@ This integration:
 
 ### Device Type Configuration
 
-When you configure the integration, you can select which device types (lights, shades, scenes) to include. Here's what happens when you change these settings:
+When you configure the integration, you can select which device types (lights, shades, scenes, sensors) to include. Here's what happens when you change these settings:
 
 - **Adding Device Types**: When you add a device type, the integration will discover and add all devices of that type to Home Assistant.
 - **Removing Device Types**: When you remove a device type, all entities of that type will be completely removed from Home Assistant. This ensures your Home Assistant instance stays clean without orphaned entities.

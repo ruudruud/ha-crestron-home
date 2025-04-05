@@ -19,8 +19,10 @@ from .const import (
     CONF_TOKEN,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
+    DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_LIGHT,
     DEVICE_TYPE_SCENE,
+    DEVICE_TYPE_SENSOR,
     DEVICE_TYPE_SHADE,
     DOMAIN,
     MANUFACTURER,
@@ -82,6 +84,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         enabled_platforms.append(Platform.COVER)
     if DEVICE_TYPE_SCENE in enabled_device_types:
         enabled_platforms.append(Platform.SCENE)
+    if DEVICE_TYPE_BINARY_SENSOR in enabled_device_types:
+        enabled_platforms.append(Platform.BINARY_SENSOR)
+    if DEVICE_TYPE_SENSOR in enabled_device_types:
+        enabled_platforms.append(Platform.SENSOR)
     
     _LOGGER.debug("Setting up enabled platforms: %s", enabled_platforms)
     await hass.config_entries.async_forward_entry_setups(entry, enabled_platforms)
@@ -105,6 +111,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         enabled_platforms.append(Platform.COVER)
     if DEVICE_TYPE_SCENE in enabled_device_types:
         enabled_platforms.append(Platform.SCENE)
+    if DEVICE_TYPE_BINARY_SENSOR in enabled_device_types:
+        enabled_platforms.append(Platform.BINARY_SENSOR)
+    if DEVICE_TYPE_SENSOR in enabled_device_types:
+        enabled_platforms.append(Platform.SENSOR)
     
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, enabled_platforms):
         hass.data[DOMAIN].pop(entry.entry_id)
@@ -125,6 +135,8 @@ async def _async_clean_entity_registry(
         DEVICE_TYPE_LIGHT: Platform.LIGHT,
         DEVICE_TYPE_SHADE: Platform.COVER,
         DEVICE_TYPE_SCENE: Platform.SCENE,
+        DEVICE_TYPE_BINARY_SENSOR: Platform.BINARY_SENSOR,
+        DEVICE_TYPE_SENSOR: Platform.SENSOR,
     }
     
     # Get domains to clean up

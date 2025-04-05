@@ -286,6 +286,16 @@ class CrestronClient:
         response = await self._api_request("GET", f"/scenes/{scene_id}")
         return response.get("scenes", [{}])[0]
 
+    async def get_sensors(self) -> List[Dict[str, Any]]:
+        """Get all sensors from the Crestron Home system."""
+        response = await self._api_request("GET", "/sensors")
+        return response.get("sensors", [])
+
+    async def get_sensor(self, sensor_id: int) -> Dict[str, Any]:
+        """Get a specific sensor from the Crestron Home system."""
+        response = await self._api_request("GET", f"/sensors/{sensor_id}")
+        return response.get("sensors", [{}])[0]
+
     @staticmethod
     def crestron_to_percentage(value: int) -> int:
         """Convert a Crestron range value (0-65535) to percentage (0-100)."""

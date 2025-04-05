@@ -12,7 +12,7 @@ MODEL: Final = "Crestron Home OS"
 ATTRIBUTION: Final = "Data provided by Crestron Home® OS REST API"
 
 # Platforms
-PLATFORMS: Final = [Platform.LIGHT, Platform.COVER, Platform.SCENE]
+PLATFORMS: Final = [Platform.LIGHT, Platform.COVER, Platform.SCENE, Platform.BINARY_SENSOR, Platform.SENSOR]
 
 # Configuration and options
 CONF_HOST: Final = "host"
@@ -28,12 +28,17 @@ MIN_UPDATE_INTERVAL: Final = 10
 DEVICE_TYPE_LIGHT: Final = "light"
 DEVICE_TYPE_SHADE: Final = "shade"
 DEVICE_TYPE_SCENE: Final = "scene"
+DEVICE_TYPE_BINARY_SENSOR: Final = "binary_sensor"
+DEVICE_TYPE_SENSOR: Final = "sensor"
 
 # Device subtypes
 DEVICE_SUBTYPE_DIMMER: Final = "Dimmer"
 DEVICE_SUBTYPE_SWITCH: Final = "Switch"
 DEVICE_SUBTYPE_SHADE: Final = "Shade"
 DEVICE_SUBTYPE_SCENE: Final = "Scene"
+DEVICE_SUBTYPE_OCCUPANCY_SENSOR: Final = "OccupancySensor"
+DEVICE_SUBTYPE_PHOTO_SENSOR: Final = "PhotoSensor"
+DEVICE_SUBTYPE_DOOR_SENSOR: Final = "DoorSensor"
 
 # Crestron API constants
 CRESTRON_API_PATH: Final = "/cws/api"

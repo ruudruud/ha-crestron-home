@@ -180,18 +180,20 @@ class CrestronClient:
         print("Getting devices from Crestron Home...")
         
         try:
-            # Get rooms, scenes, devices, and shades in parallel
+            # Get rooms, scenes, devices, shades, and sensors in parallel
             results = await asyncio.gather(
                 self._api_request("GET", "/rooms"),
                 self._api_request("GET", "/scenes"),
                 self._api_request("GET", "/devices"),
                 self._api_request("GET", "/shades"),
+                self._api_request("GET", "/sensors"),
             )
             
             rooms_data = results[0]
             scenes_data = results[1]
             devices_data = results[2]
             shades_data = results[3]
+            sensors_data = results[4]
             
             # Store rooms for later use
             self.rooms = rooms_data.get("rooms", [])
@@ -395,12 +397,13 @@ def print_light_table(lights: List[Dict[str, Any]], sort_by: str = "room") -> No
 
 async def get_raw_api_data(client: CrestronClient) -> Dict[str, Any]:
     """Get raw API data from the Crestron Home system."""
-    # Get rooms, scenes, devices, and shades in parallel
+    # Get rooms, scenes, devices, shades, and sensors in parallel
     results = await asyncio.gather(
         client._api_request("GET", "/rooms"),
         client._api_request("GET", "/scenes"),
         client._api_request("GET", "/devices"),
         client._api_request("GET", "/shades"),
+        client._api_request("GET", "/sensors"),
     )
     
     return {
@@ -408,6 +411,7 @@ async def get_raw_api_data(client: CrestronClient) -> Dict[str, Any]:
         "scenes": results[1],
         "devices": results[2],
         "shades": results[3],
+        "sensors": results[4],
     }
 
 def print_raw_data_for_room(raw_data: Dict[str, Any], room_name: str) -> None:
@@ -450,6 +454,12 @@ def print_raw_data_for_room(raw_data: Dict[str, Any], room_name: str) -> None:
         if shade.get("roomId") == room_id:
             room_shades.append(shade)
     
+    # Find sensors in this room
+    room_sensors = []
+    for sensor in raw_data["sensors"].get("sensors", []):
+        if sensor.get("roomId") == room_id:
+            room_sensors.append(sensor)
+    
     # Print the raw device data
     if room_devices:
         print(f"\n{ANSI_BOLD}Raw Device Data ({len(room_devices)} devices):{ANSI_RESET}")
@@ -464,6 +474,11 @@ def print_raw_data_for_room(raw_data: Dict[str, Any], room_name: str) -> None:
     if room_shades:
         print(f"\n{ANSI_BOLD}Raw Shade Data ({len(room_shades)} shades):{ANSI_RESET}")
         print(json.dumps(room_shades, indent=2))
+    
+    # Print the raw sensor data
+    if room_sensors:
+        print(f"\n{ANSI_BOLD}Raw Sensor Data ({len(room_sensors)} sensors):{ANSI_RESET}")
+        print(json.dumps(room_sensors, indent=2))
 
 async def main() -> None:
     """Run the test script."""
