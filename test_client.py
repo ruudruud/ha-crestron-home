@@ -14,12 +14,14 @@ Options:
   --sort {name,room,status,level}
                       Sort lights by the specified field (default: room)
   --all               Show all devices, not just lights
+  --sensors           Show only sensors (occupancy, door, photo)
   --raw               Show raw API data instead of formatted output
   --help              Show this help message and exit
 
 Examples:
   python test_client.py --room "Living Room" --sort level
   python test_client.py --room "Bijkeuken" --raw
+  python test_client.py --sensors --room "Living Room"
 """
 
 import argparse
@@ -310,6 +312,11 @@ def parse_arguments() -> argparse.Namespace:
         help="Show all devices, not just lights"
     )
     parser.add_argument(
+        "--sensors", 
+        action="store_true",
+        help="Show only sensors (occupancy, door, photo)"
+    )
+    parser.add_argument(
         "--raw", 
         action="store_true",
         help="Show raw API data instead of formatted output"
@@ -514,8 +521,54 @@ async def main() -> None:
             devices = await client.get_devices()
             print(f"Found {len(devices)} devices")
             
+            # Get sensors directly if requested
+            if args.sensors:
+                # Get sensors directly from the API
+                sensors_data = await client._api_request("GET", "/sensors")
+                sensors = sensors_data.get("sensors", [])
+                
+                # Process sensors to match device format
+                processed_sensors = []
+                for sensor in sensors:
+                    room_name = next(
+                        (r.get("name", "") for r in client.rooms if r.get("id") == sensor.get("roomId")),
+                        "",
+                    )
+                    
+                    sensor_type = sensor.get("subType", "")
+                    
+                    # Create sensor info with common fields
+                    sensor_info = {
+                        "id": sensor.get("id"),
+                        "type": sensor_type,
+                        "subType": sensor_type,
+                        "name": f"{room_name} {sensor.get('name', '')}".strip(),
+                        "roomId": sensor.get("roomId"),
+                        "roomName": room_name,
+                        "level": 0,  # Default for compatibility with table display
+                        "connectionStatus": sensor.get("connectionStatus", "unknown"),
+                    }
+                    
+                    # Add sensor-specific properties
+                    if sensor_type == "OccupancySensor":
+                        presence = sensor.get("presence", "Unavailable")
+                        sensor_info["presence"] = presence
+                        # Set level for table display (ON/OFF status)
+                        sensor_info["level"] = 65535 if (presence != "Vacant" and presence != "Unavailable") else 0
+                    elif sensor_type == "DoorSensor":
+                        sensor_info["door_status"] = sensor.get("door_status", "Closed")
+                        sensor_info["battery_level"] = sensor.get("battery_level", "Normal")
+                        # Set level for table display (ON/OFF status)
+                        sensor_info["level"] = 65535 if sensor.get("door_status") == "Open" else 0
+                    elif sensor_type == "PhotoSensor":
+                        sensor_info["level"] = sensor.get("level", 0)
+                    
+                    processed_sensors.append(sensor_info)
+                
+                filtered_devices = processed_sensors
+                print(f"Found {len(filtered_devices)} sensors")
             # Filter devices based on command line arguments
-            if args.all:
+            elif args.all:
                 filtered_devices = devices
             else:
                 # Filter to only show lights (Dimmer and Switch types)
@@ -544,9 +597,15 @@ async def main() -> None:
             for device_type, type_devices in sorted(devices_by_type.items()):
                 print(f"  - {device_type}: {len(type_devices)}")
             
-            # Print the light table
-            if args.all:
+            # Print the device table
+            if args.sensors:
+                print(f"\nShowing {len(filtered_devices)} sensors:")
+                if args.room:
+                    print(f"(Filtered by room: {args.room})")
+            elif args.all:
                 print(f"\nShowing all {len(filtered_devices)} devices:")
+                if args.room:
+                    print(f"(Filtered by room: {args.room})")
             else:
                 print(f"\nShowing {len(filtered_devices)} lights:")
                 if args.room:

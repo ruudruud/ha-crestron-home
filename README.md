@@ -22,15 +22,17 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 
 ### Supported Device Types
 
-| Crestron Device Subtype | Home Assistant Entity | Features |
-|-------------------------|------------------------|----------|
-| Dimmer                  | Light                  | On/Off, Brightness |
-| Switch                  | Light                  | On/Off |
-| Shade                   | Cover                  | Open/Close, Position |
-| Scene                   | Scene                  | Activate |
-| OccupancySensor         | Binary Sensor         | Occupancy detection |
-| DoorSensor              | Binary Sensor         | Door open/closed status, Battery level |
-| PhotoSensor             | Sensor                | Light level measurement (lux) |
+| Crestron Device Subtype | Home Assistant Entity | Features | Testing Status |
+|-------------------------|------------------------|----------|----------------|
+| Dimmer                  | Light                  | On/Off, Brightness | Tested |
+| Switch                  | Light                  | On/Off | Tested |
+| Shade                   | Cover                  | Open/Close, Position | Tested |
+| Scene                   | Scene                  | Activate | Tested |
+| OccupancySensor         | Binary Sensor         | Occupancy detection | Tested ✓ |
+| DoorSensor              | Binary Sensor         | Door open/closed status, Battery level | Not tested |
+| PhotoSensor             | Sensor                | Light level measurement (lux) | Not tested |
+
+> **Note**: The OccupancySensor implementation has been thoroughly tested and works well with Crestron Home systems. The DoorSensor and PhotoSensor implementations are included but have not been tested with actual hardware yet.
 
 ## Installation
 

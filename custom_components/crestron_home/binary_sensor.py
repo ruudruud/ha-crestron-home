@@ -121,11 +121,13 @@ class CrestronHomeOccupancySensor(CrestronHomeBinarySensor):
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
             if device["id"] == self._device["id"]:
-                # "Unavailable" means no occupancy, anything else means occupied
-                return device.get("presence", "Unavailable") != "Unavailable"
+                # "Vacant" or "Unavailable" means no occupancy, anything else means occupied
+                presence = device.get("presence", "Unavailable")
+                return presence != "Vacant" and presence != "Unavailable"
         
         # If device not found, use the stored state
-        return self._device.get("presence", "Unavailable") != "Unavailable"
+        presence = self._device.get("presence", "Unavailable")
+        return presence != "Vacant" and presence != "Unavailable"
 
 
 class CrestronHomeDoorSensor(CrestronHomeBinarySensor):
