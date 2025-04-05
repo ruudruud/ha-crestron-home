@@ -58,9 +58,6 @@ async def async_setup_entry(
 class CrestronHomeShade(CoordinatorEntity, CoverEntity):
     """Representation of a Crestron Home shade."""
 
-    # Override the entity platform name to display "Shades" instead of "Cover"
-    _attr_translation_key = "shade"
-
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,

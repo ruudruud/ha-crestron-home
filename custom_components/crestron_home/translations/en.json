@@ -1,22 +1,5 @@
 {
   "title": "Crestron Home",
-  "entity": {
-    "cover": {
-      "shade": {
-        "name": "Shades"
-      }
-    },
-    "light": {
-      "light": {
-        "name": "Lights"
-      }
-    },
-    "scene": {
-      "scene": {
-        "name": "Scenes"
-      }
-    }
-  },
   "config": {
     "step": {
       "user": {
