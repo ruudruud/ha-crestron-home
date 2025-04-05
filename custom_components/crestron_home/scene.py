@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    CONF_ENABLED_DEVICE_TYPES,
     DEVICE_SUBTYPE_SCENE,
     DEVICE_TYPE_SCENE,
     DOMAIN,
@@ -31,12 +32,19 @@ async def async_setup_entry(
     """Set up Crestron Home scenes based on config entry."""
     coordinator: CrestronHomeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     
+    # Check if scene platform is enabled
+    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    if DEVICE_TYPE_SCENE not in enabled_device_types:
+        _LOGGER.debug("Scene platform not enabled, skipping setup")
+        return
+    
     # Get all scene devices from the coordinator
     scenes = []
     
     for device in coordinator.data.get(DEVICE_TYPE_SCENE, []):
         scenes.append(CrestronHomeScene(coordinator, device))
     
+    _LOGGER.debug("Adding %d scene entities", len(scenes))
     async_add_entities(scenes)
 
 

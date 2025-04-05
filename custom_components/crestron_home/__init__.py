@@ -17,6 +17,9 @@ from .const import (
     CONF_TOKEN,
     CONF_UPDATE_INTERVAL,
     DEFAULT_UPDATE_INTERVAL,
+    DEVICE_TYPE_LIGHT,
+    DEVICE_TYPE_SCENE,
+    DEVICE_TYPE_SHADE,
     DOMAIN,
     PLATFORMS,
     STARTUP_MESSAGE,
@@ -54,8 +57,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store coordinator
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
-    # Set up platforms
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Set up only enabled platforms
+    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    enabled_platforms = []
+    
+    # Map device types to platforms
+    if DEVICE_TYPE_LIGHT in enabled_device_types:
+        enabled_platforms.append(Platform.LIGHT)
+    if DEVICE_TYPE_SHADE in enabled_device_types:
+        enabled_platforms.append(Platform.COVER)
+    if DEVICE_TYPE_SCENE in enabled_device_types:
+        enabled_platforms.append(Platform.SCENE)
+    
+    _LOGGER.debug("Setting up enabled platforms: %s", enabled_platforms)
+    await hass.config_entries.async_forward_entry_setups(entry, enabled_platforms)
 
     # Register update listener for options
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
@@ -65,7 +80,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+    # Get enabled platforms
+    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    enabled_platforms = []
+    
+    # Map device types to platforms
+    if DEVICE_TYPE_LIGHT in enabled_device_types:
+        enabled_platforms.append(Platform.LIGHT)
+    if DEVICE_TYPE_SHADE in enabled_device_types:
+        enabled_platforms.append(Platform.COVER)
+    if DEVICE_TYPE_SCENE in enabled_device_types:
+        enabled_platforms.append(Platform.SCENE)
+    
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, enabled_platforms):
         hass.data[DOMAIN].pop(entry.entry_id)
 
     return unload_ok

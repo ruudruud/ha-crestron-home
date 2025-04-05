@@ -18,6 +18,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import CrestronClient
 from .const import (
+    CONF_ENABLED_DEVICE_TYPES,
     DEVICE_SUBTYPE_SHADE,
     DEVICE_TYPE_SHADE,
     DOMAIN,
@@ -37,12 +38,19 @@ async def async_setup_entry(
     """Set up Crestron Home covers based on config entry."""
     coordinator: CrestronHomeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     
+    # Check if shade platform is enabled
+    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    if DEVICE_TYPE_SHADE not in enabled_device_types:
+        _LOGGER.debug("Shade platform not enabled, skipping setup")
+        return
+    
     # Get all shade devices from the coordinator
     covers = []
     
     for device in coordinator.data.get(DEVICE_TYPE_SHADE, []):
         covers.append(CrestronHomeShade(coordinator, device))
     
+    _LOGGER.debug("Adding %d cover entities", len(covers))
     async_add_entities(covers)
 
 
