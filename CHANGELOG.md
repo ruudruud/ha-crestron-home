@@ -1,12 +1,16 @@
 # Changelog
 
+## 0.1.3 (2025-05-04)
+
+### Improvements
+
+- Fixed issue where entities remained in Home Assistant after removing their device type from configuration
+
 ## 0.1.2 (2025-05-04)
 
 ### Improvements
 
 - Added room-based organization for devices on the Home Assistant dashboard
-- Devices are now automatically assigned to areas based on their room in Crestron Home
-- Improved user experience by grouping devices by room
 
 ## 0.1.1 (2025-05-04)
 
@@ -14,8 +18,6 @@
 
 - Fixed device discovery issue where no devices were being detected
 - Added proper mapping between Crestron device types and Home Assistant device types
-- Added detailed debug logging for troubleshooting
-- Updated documentation with troubleshooting information
 
 ## 0.1.0 (2025-05-04)
 

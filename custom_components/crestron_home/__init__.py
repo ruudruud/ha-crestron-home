@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, List, Set
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.device_registry import async_get as async_get_device_registry
+from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 
 from .api import CrestronApiError, CrestronClient
 from .const import (
@@ -65,7 +66,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, host)},
-        name=f"Crestron Home Controller ({host})",
+        name=f"Crestron Home ({host})",
         manufacturer=MANUFACTURER,
         model=MODEL,
     )
@@ -111,7 +112,81 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
+async def _async_clean_entity_registry(
+    hass: HomeAssistant, 
+    entry: ConfigEntry,
+    disabled_device_types: List[str]
+) -> None:
+    """Remove entities for disabled device types from the entity registry."""
+    entity_registry = async_get_entity_registry(hass)
+    
+    # Map device types to platform domains
+    domain_mapping = {
+        DEVICE_TYPE_LIGHT: Platform.LIGHT,
+        DEVICE_TYPE_SHADE: Platform.COVER,
+        DEVICE_TYPE_SCENE: Platform.SCENE,
+    }
+    
+    # Get domains to clean up
+    domains_to_clean = [domain_mapping[device_type] for device_type in disabled_device_types 
+                        if device_type in domain_mapping]
+    
+    _LOGGER.debug("Cleaning up entities for domains: %s", domains_to_clean)
+    
+    # Find entities for this config entry
+    entity_entries = async_get_entity_registry(hass).entities.values()
+    
+    # Get entities to remove (those belonging to this config entry and disabled domains)
+    entities_to_remove = [
+        entity_id for entity_id, entity in entity_registry.entities.items()
+        if entity.config_entry_id == entry.entry_id and entity.domain in domains_to_clean
+    ]
+    
+    # Remove entities
+    for entity_id in entities_to_remove:
+        _LOGGER.debug("Removing entity %s from registry", entity_id)
+        entity_registry.async_remove(entity_id)
+
+
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload config entry."""
+    # Get old and new enabled device types
+    old_enabled_types = set(entry.data.get(CONF_ENABLED_DEVICE_TYPES, []))
+    
+    # If entry.options is empty, it means this is the first reload after setup
+    # In this case, there's nothing to compare
+    if not entry.options:
+        await async_unload_entry(hass, entry)
+        await async_setup_entry(hass, entry)
+        return
+    
+    new_enabled_types = set(entry.options.get(CONF_ENABLED_DEVICE_TYPES, old_enabled_types))
+    
+    # Find disabled device types
+    disabled_types = [t for t in old_enabled_types if t not in new_enabled_types]
+    
+    _LOGGER.debug(
+        "Reloading entry. Old types: %s, New types: %s, Disabled: %s",
+        old_enabled_types, new_enabled_types, disabled_types
+    )
+    
+    # Clean up entities for disabled device types
+    if disabled_types:
+        await _async_clean_entity_registry(hass, entry, disabled_types)
+    
+    # Update entry data with new options
+    if entry.options:
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, **entry.options}
+        )
+    
+    # Update coordinator's enabled device types if it exists
+    if entry.entry_id in hass.data.get(DOMAIN, {}):
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        if hasattr(coordinator, "enabled_device_types"):
+            _LOGGER.debug("Updating coordinator's enabled device types to: %s", new_enabled_types)
+            coordinator.enabled_device_types = list(new_enabled_types)
+    
+    # Reload entry
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)

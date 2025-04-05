@@ -146,6 +146,16 @@ This integration:
 - Verify that the devices are properly configured in your Crestron Home system
 - Try increasing the update interval to ensure all devices are discovered
 
+### Device Type Configuration
+
+When you configure the integration, you can select which device types (lights, shades, scenes) to include. Here's what happens when you change these settings:
+
+- **Adding Device Types**: When you add a device type, the integration will discover and add all devices of that type to Home Assistant.
+- **Removing Device Types**: When you remove a device type, all entities of that type will be completely removed from Home Assistant. This ensures your Home Assistant instance stays clean without orphaned entities.
+- **Re-adding Device Types**: If you later re-add a device type, the entities will be recreated with default settings.
+
+> **Note**: Any customizations you made to entities (such as custom names, icons, or area assignments) will be lost when you remove their device type from the configuration. These settings will need to be reapplied if you re-add the device type later.
+
 ## Contributing
 
 Contributions are welcome! Please see the [Contributing Guidelines](CONTRIBUTING.md) for more information.

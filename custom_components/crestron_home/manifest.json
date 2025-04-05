@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/ruudruud/ha-crestron-home/issues",
   "loggers": ["custom_components.crestron_home"],
   "requirements": ["aiohttp>=3.8.0"],
-  "version": "0.1.2"
+  "version": "0.1.3"
 }

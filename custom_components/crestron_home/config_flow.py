@@ -154,15 +154,8 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                 )
                 await client.login()
                 
-                # Merge the updated options with the existing config entry data
-                updated_data = {**self.config_entry.data}
-                updated_data[CONF_UPDATE_INTERVAL] = user_input[CONF_UPDATE_INTERVAL]
-                updated_data[CONF_ENABLED_DEVICE_TYPES] = user_input[CONF_ENABLED_DEVICE_TYPES]
-                
-                self.hass.config_entries.async_update_entry(
-                    self.config_entry, data=updated_data
-                )
-                
+                # Return the options to be stored in entry.options
+                # The async_reload_entry function will handle merging these with the data
                 return self.async_create_entry(title="", data=user_input)
             
             except CrestronConnectionError:
