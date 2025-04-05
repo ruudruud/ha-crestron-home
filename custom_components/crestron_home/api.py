@@ -47,6 +47,11 @@ class CrestronClient:
         self.last_login: float = 0
         self.rooms: List[Dict[str, Any]] = []
         self._session = async_get_clientsession(hass, verify_ssl=False)
+        
+        # Create SSL context once during initialization to avoid blocking calls in the event loop
+        self._ssl_context = ssl.create_default_context()
+        self._ssl_context.check_hostname = False
+        self._ssl_context.verify_mode = ssl.CERT_NONE
 
     async def login(self) -> None:
         """Login to the Crestron Home system."""
@@ -59,13 +64,9 @@ class CrestronClient:
         _LOGGER.debug("Logging in to Crestron Home at %s", self.base_url)
         
         try:
-            # Create SSL context that doesn't verify certificates
-            ssl_context = ssl.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl.CERT_NONE
-            
+            # Use the pre-created SSL context
             # Make login request
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ssl_context)) as session:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl_context)) as session:
                 headers = {
                     "Accept": "application/json",
                     "Crestron-RestAPI-AuthToken": self.api_token,

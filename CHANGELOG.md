@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.5 (2025-05-04)
+
+### Bug Fixes
+
+- Fixed warning about blocking call to `load_default_certs` in the event loop by moving SSL context creation to initialization
+
 ## 0.1.4 (2025-05-04)
 
 ### Features
