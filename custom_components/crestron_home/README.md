@@ -7,6 +7,7 @@ This custom component integrates Crestron Home with Home Assistant, allowing you
 - Control Crestron Home lights (on/off, brightness)
 - Control Crestron Home shades (open, close, set position)
 - Activate Crestron Home scenes
+- Room-based organization of devices
 
 ## Requirements
 
@@ -14,6 +15,7 @@ This custom component integrates Crestron Home with Home Assistant, allowing you
 - Python 3.11+
 - A Crestron Home system with CWS (Crestron Web Service) enabled
 - A valid API token for the Crestron Home system
+- aiohttp ≥ 3.8.0
 
 ## Installation
 
@@ -78,6 +80,8 @@ automation:
       service: light.turn_on
       target:
         entity_id: light.living_room_main_light
+      data:
+        brightness_pct: 75
 
 # Example automation to activate a Crestron scene
 automation:
@@ -107,6 +111,13 @@ automation:
 - Verify that the devices are properly configured in your Crestron Home system
 - Try increasing the update interval to ensure all devices are discovered
 
+### Device Type Configuration
+
+When you change device type settings in the configuration:
+- Adding device types will discover and add all devices of that type
+- Removing device types will remove all entities of that type from Home Assistant
+- Re-adding device types will recreate entities with default settings (customizations will be lost)
+
 ### Enabling Debug Logging
 
 To get more detailed information about what's happening with the integration, you can enable debug logging:
@@ -128,6 +139,7 @@ The debug logs will show:
 - How many devices are found in each category
 - Which devices are being added to Home Assistant and which are being skipped
 - Any errors that occur during communication with the Crestron system
+- Session management details (Crestron sessions expire after 10 minutes)
 
 ## Support
 
