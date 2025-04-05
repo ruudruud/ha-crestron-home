@@ -41,8 +41,11 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via API client."""
         try:
+            _LOGGER.debug("Updating data with enabled device types: %s", self.enabled_device_types)
+            
             # Get all devices from the Crestron Home system
             self.devices = await self.client.get_devices(self.enabled_device_types)
+            _LOGGER.debug("Received %d devices from API", len(self.devices))
             
             # Organize devices by type for easier access
             devices_by_type = {
@@ -52,15 +55,16 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
             }
             
             for device in self.devices:
-                device_type = device.get("type", "").lower()
+                # Use the mapped Home Assistant device type
+                ha_device_type = device.get("ha_device_type")
                 
-                # Map Crestron device types to Home Assistant platform types
-                if device_type == "dimmer" or device_type == "switch":
-                    devices_by_type["light"].append(device)
-                elif device_type == "shade":
-                    devices_by_type["shade"].append(device)
-                elif device_type == "scene":
-                    devices_by_type["scene"].append(device)
+                if ha_device_type and ha_device_type in devices_by_type:
+                    devices_by_type[ha_device_type].append(device)
+                    _LOGGER.debug("Added device to %s platform: %s", ha_device_type, device.get("name"))
+            
+            # Log device counts by type
+            for device_type, type_devices in devices_by_type.items():
+                _LOGGER.info("Found %d devices for %s platform", len(type_devices), device_type)
             
             return devices_by_type
         

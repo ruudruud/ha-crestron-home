@@ -135,7 +135,7 @@ class CrestronClient:
 
     async def get_devices(self, enabled_types: List[str]) -> List[Dict[str, Any]]:
         """Get all devices from the Crestron Home system."""
-        _LOGGER.debug("Getting devices from Crestron Home")
+        _LOGGER.debug("Getting devices from Crestron Home with enabled types: %s", enabled_types)
         
         try:
             # Get rooms, scenes, devices, and shades in parallel
@@ -153,6 +153,12 @@ class CrestronClient:
             
             # Store rooms for later use
             self.rooms = rooms_data.get("rooms", [])
+            
+            _LOGGER.debug("Found %d rooms, %d scenes, %d devices, %d shades", 
+                         len(self.rooms), 
+                         len(scenes_data.get("scenes", [])),
+                         len(devices_data.get("devices", [])),
+                         len(shades_data.get("shades", [])))
             
             devices: List[Dict[str, Any]] = []
             
@@ -173,6 +179,13 @@ class CrestronClient:
                             shade_position = shade.get("position", 0)
                             break
                 
+                # Map Crestron device types to Home Assistant device types
+                ha_device_type = None
+                if device_type == "Dimmer" or device_type == "Switch":
+                    ha_device_type = "light"
+                elif device_type == "Shade":
+                    ha_device_type = "shade"
+                
                 device_info = {
                     "id": device.get("id"),
                     "type": device_type,
@@ -183,13 +196,20 @@ class CrestronClient:
                     "level": device.get("level", 0),
                     "status": device.get("status", False),
                     "position": shade_position,
+                    "ha_device_type": ha_device_type,
                 }
                 
-                if device_type in enabled_types:
+                # Add device if its mapped type is in enabled_types
+                if ha_device_type and ha_device_type in enabled_types:
                     devices.append(device_info)
+                    _LOGGER.debug("Added %s device: %s (ID: %s)", 
+                                 ha_device_type, device_info["name"], device_info["id"])
+                else:
+                    _LOGGER.debug("Skipped device: %s (Type: %s, Mapped Type: %s)", 
+                                 device_info["name"], device_type, ha_device_type)
             
             # Process scenes
-            if "Scene" in enabled_types:
+            if "scene" in enabled_types:
                 for scene in scenes_data.get("scenes", []):
                     room_name = next(
                         (r.get("name", "") for r in self.rooms if r.get("id") == scene.get("roomId")),
@@ -206,10 +226,14 @@ class CrestronClient:
                         "level": 0,
                         "status": scene.get("status", False),
                         "position": 0,
+                        "ha_device_type": "scene",
                     }
                     
                     devices.append(scene_info)
+                    _LOGGER.debug("Added scene: %s (ID: %s)", 
+                                 scene_info["name"], scene_info["id"])
             
+            _LOGGER.info("Found %d devices matching enabled types", len(devices))
             return devices
         
         except Exception as error:

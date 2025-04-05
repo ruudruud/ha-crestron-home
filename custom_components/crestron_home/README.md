@@ -107,6 +107,28 @@ automation:
 - Verify that the devices are properly configured in your Crestron Home system
 - Try increasing the update interval to ensure all devices are discovered
 
+### Enabling Debug Logging
+
+To get more detailed information about what's happening with the integration, you can enable debug logging:
+
+1. Add the following to your `configuration.yaml` file:
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.crestron_home: debug
+```
+
+2. Restart Home Assistant
+3. Check the logs for detailed information about device discovery and communication with the Crestron system
+
+The debug logs will show:
+- Which device types are enabled
+- How many devices are found in each category
+- Which devices are being added to Home Assistant and which are being skipped
+- Any errors that occur during communication with the Crestron system
+
 ## Support
 
 If you encounter any issues or have questions, please open an issue on the GitHub repository.
