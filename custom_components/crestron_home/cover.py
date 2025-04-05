@@ -95,10 +95,11 @@ class CrestronHomeShade(CoordinatorEntity, CoverEntity):
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_SHADE, []):
             if device["id"] == self._device["id"]:
-                return device.get("connectionStatus") == "online"
+                # If connectionStatus is not present or not "offline", consider it available
+                return device.get("connectionStatus", "online") != "offline"
         
         # If device not found, use the stored state
-        return self._device.get("connectionStatus") == "online"
+        return self._device.get("connectionStatus", "online") != "offline"
 
     @property
     def current_cover_position(self) -> int:
