@@ -12,10 +12,13 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 
 ## Features
 
-- **Lights**: Control Crestron Home lights (on/off, brightness)
-- **Shades**: Control Crestron Home shades (open, close, set position)
-- **Scenes**: Activate Crestron Home scenes
-- **Sensors**: Support for various Crestron Home sensors (occupancy, door, photosensor)
+- **Lights**: Control Crestron Home lights (dimmers with brightness control, switches with on/off)
+- **Shades**: Control Crestron Home shades (open, close, set position, stop movement)
+- **Scenes**: Activate Crestron Home scenes with room-based organization
+- **Sensors**: Support for Crestron Home sensors:
+  - Occupancy sensors (binary sensors for presence detection)
+  - Door sensors (binary sensors with battery level reporting)
+  - Photo sensors (illuminance measurement in lux)
 - **Configuration Flow**: Easy setup through the Home Assistant UI
 - **Automatic Discovery**: Automatically discovers all compatible devices
 - **Room-Based Organization**: Devices are automatically organized by room on the Home Assistant dashboard
@@ -28,7 +31,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 | Switch                  | Light                  | On/Off | Tested |
 | Shade                   | Cover                  | Open/Close, Position | Tested |
 | Scene                   | Scene                  | Activate | Tested |
-| OccupancySensor         | Binary Sensor         | Occupancy detection | Tested ✓ |
+| OccupancySensor         | Binary Sensor         | Occupancy detection | Tested |
 | DoorSensor              | Binary Sensor         | Door open/closed status, Battery level | Not tested |
 | PhotoSensor             | Sensor                | Light level measurement (lux) | Not tested |
 
@@ -70,10 +73,17 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 2. Click "Add Integration"
 3. Search for "Crestron Home"
 4. Enter the following information:
-   - Host: The IP address or hostname of your Crestron Home processor
-   - API Token: The token you generated in the Crestron Home Setup app
-   - Update Interval: How often to poll for updates (in seconds)
-   - Device Types to Include: Select which types of devices to include (lights, shades, scenes, sensors)
+   - **Host**: The IP address or hostname of your Crestron Home processor
+   - **API Token**: The token you generated in the Crestron Home Setup app
+   - **Update Interval**: How often to poll for updates (in seconds)
+     - Default: 30 seconds, Minimum: 10 seconds
+     - Lower values provide more responsive updates but increase system load
+   - **Device Types to Include**: Select which types of devices to include
+     - Lights: All dimmers and switches
+     - Shades: All motorized shades/covers
+     - Scenes: All scenes defined in your Crestron Home system
+     - Binary Sensors: Occupancy sensors and door sensors
+     - Sensors: Photosensors and other measurement devices
 5. Click "Submit"
 
 ## Usage Examples
@@ -153,10 +163,13 @@ automation:
 
 ## Requirements
 
-- Home Assistant Core ≥ 2024.2
-- Python 3.11+
-- A Crestron Home system with CWS (Crestron Web Service) enabled
-- A valid API token for the Crestron Home system
+- **Home Assistant Core**: Version 2024.2 or newer
+- **Python**: Version 3.11 or newer
+- **Dependencies**: aiohttp 3.8.0 or newer (for API communication)
+- **Hardware Requirements**:
+  - A Crestron Home system with CWS (Crestron Web Service) enabled
+  - Network connectivity between Home Assistant and the Crestron processor
+  - A valid API token for the Crestron Home system
 
 ## Technical Details
 
