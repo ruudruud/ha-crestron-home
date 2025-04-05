@@ -70,7 +70,7 @@ class CrestronHomeBaseLight(CoordinatorEntity, LightEntity):
         self._device = device
         self._attr_unique_id = f"crestron_light_{device['id']}"
         self._attr_name = device["name"]
-        self._attr_has_entity_name = True
+        self._attr_has_entity_name = False
         self._attr_device_class = None
         
         # Set up device info
