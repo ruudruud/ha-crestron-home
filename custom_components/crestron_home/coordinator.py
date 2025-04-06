@@ -125,11 +125,19 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
                     
                     if ha_device_type and ha_device_type in self.enabled_device_types:
                         # Create sensor info
+                        sensor_name = f"{room_name} {sensor.get('name', '')}".strip()
+                        
+                        # Skip sensors with 'Circadian' in the name (case insensitive)
+                        if 'circadian' in sensor_name.lower() or 'circadian' in sub_type.lower():
+                            _LOGGER.debug("Skipped Circadian sensor: %s (Type: %s)", 
+                                         sensor_name, sub_type)
+                            continue
+                        
                         sensor_info = {
                             "id": sensor.get("id"),
                             "type": sub_type,
                             "subType": sub_type,
-                            "name": f"{room_name} {sensor.get('name', '')}".strip(),
+                            "name": sensor_name,
                             "roomId": room_id,
                             "roomName": room_name,
                             "ha_device_type": ha_device_type,

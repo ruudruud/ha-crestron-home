@@ -200,11 +200,16 @@ class CrestronClient:
                     "ha_device_type": ha_device_type,
                 }
                 
-                # Add device if its mapped type is in enabled_types
+                # Add device if its mapped type is in enabled_types and it's not a Circadian device
                 if ha_device_type and ha_device_type in enabled_types:
-                    devices.append(device_info)
-                    _LOGGER.debug("Added %s device: %s (ID: %s)", 
-                                 ha_device_type, device_info["name"], device_info["id"])
+                    # Check if 'circadian' appears in device name or type (case insensitive)
+                    if 'circadian' not in device_info['name'].lower() and 'circadian' not in device_type.lower():
+                        devices.append(device_info)
+                        _LOGGER.debug("Added %s device: %s (ID: %s)", 
+                                     ha_device_type, device_info["name"], device_info["id"])
+                    else:
+                        _LOGGER.debug("Skipped Circadian device: %s (Type: %s)", 
+                                     device_info["name"], device_type)
                 else:
                     _LOGGER.debug("Skipped device: %s (Type: %s, Mapped Type: %s)", 
                                  device_info["name"], device_type, ha_device_type)
@@ -230,9 +235,14 @@ class CrestronClient:
                         "ha_device_type": "scene",
                     }
                     
-                    devices.append(scene_info)
-                    _LOGGER.debug("Added scene: %s (ID: %s)", 
-                                 scene_info["name"], scene_info["id"])
+                    # Check if 'circadian' appears in scene name or type (case insensitive)
+                    if 'circadian' not in scene_info['name'].lower() and 'circadian' not in scene_info['subType'].lower():
+                        devices.append(scene_info)
+                        _LOGGER.debug("Added scene: %s (ID: %s)", 
+                                     scene_info["name"], scene_info["id"])
+                    else:
+                        _LOGGER.debug("Skipped Circadian scene: %s (Type: %s)", 
+                                     scene_info["name"], scene_info["subType"])
             
             _LOGGER.info("Found %d devices matching enabled types", len(devices))
             return devices
