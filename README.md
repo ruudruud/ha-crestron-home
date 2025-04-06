@@ -22,7 +22,6 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 - **Configuration Flow**: Easy setup through the Home Assistant UI
 - **Automatic Discovery**: Automatically discovers all compatible devices
 - **Room-Based Organization**: Devices are automatically organized by room on the Home Assistant dashboard
-- **Room Name Synchronization**: Automatically updates entity names when room names are changed in the Crestron Home app
 
 ### Supported Device Types
 
@@ -86,6 +85,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
      - Binary Sensors: Occupancy sensors and door sensors
      - Sensors: Photosensors and other measurement devices
 5. Click "Submit"
+6. Please allow for some time for the device synchronization.
 
 ## Requirements
 
@@ -106,15 +106,6 @@ This integration:
 - Provides a configuration flow for easy setup through the Home Assistant UI
 - Supports multiple device types with appropriate Home Assistant entity representations
 - Periodically checks for room name changes in the Crestron Home system and updates entity names accordingly
-
-### Room Name Synchronization
-
-The integration periodically checks for room name changes in your Crestron Home system and updates entity names accordingly:
-
-- Room names are checked every 10 update cycles (approximately every 2.5 minutes with the default 15-second update interval)
-- When a room name is changed in the Crestron Home app, all entities associated with that room will have their names updated
-- Entity IDs remain unchanged to avoid breaking automations and scripts
-- This ensures that your Home Assistant entities always reflect the current room names in your Crestron Home system
 
 ## Troubleshooting
 

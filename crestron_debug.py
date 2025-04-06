@@ -23,7 +23,7 @@ Options:
   --room ROOM         Filter devices by room name
   --sort {name,room,status,level}
                       Sort devices by the specified field (default: room)
-  --all               Show all devices, not just lights
+  --lights            Show only lights (Dimmer and Switch types)
   --sensors           Show only sensors (occupancy, door, photo)
   --raw               Show raw API data instead of formatted output
   --help              Show this help message and exit
@@ -32,7 +32,7 @@ Examples:
   python crestron_debug.py --room "Living Room" --sort level
   python crestron_debug.py --room "Bijkeuken" --raw
   python crestron_debug.py --sensors --room "Living Room"
-  python crestron_debug.py --all --sort status
+  python crestron_debug.py --lights --sort status
 """
 
 import argparse
@@ -395,9 +395,9 @@ def parse_arguments() -> argparse.Namespace:
         help="Sort devices by the specified field (default: room)"
     )
     parser.add_argument(
-        "--all", 
+        "--lights", 
         action="store_true",
-        help="Show all devices, not just lights"
+        help="Show only lights (Dimmer and Switch types)"
     )
     parser.add_argument(
         "--sensors", 
@@ -688,14 +688,15 @@ async def main() -> None:
                 filtered_devices = await process_sensors(client)
                 print(f"Found {len(filtered_devices)} sensors")
             # Filter devices based on command line arguments
-            elif args.all:
-                filtered_devices = devices
-            else:
+            elif args.lights:
                 # Filter to only show lights (Dimmer and Switch types)
                 filtered_devices = [
                     device for device in devices 
                     if device["type"] in ["Dimmer", "Switch"]
                 ]
+            else:
+                # Show all devices by default
+                filtered_devices = devices
             
             # Apply room filter if specified
             if args.room:
@@ -722,12 +723,12 @@ async def main() -> None:
                 print(f"\nShowing {len(filtered_devices)} sensors:")
                 if args.room:
                     print(f"(Filtered by room: {args.room})")
-            elif args.all:
-                print(f"\nShowing all {len(filtered_devices)} devices:")
+            elif args.lights:
+                print(f"\nShowing {len(filtered_devices)} lights:")
                 if args.room:
                     print(f"(Filtered by room: {args.room})")
             else:
-                print(f"\nShowing {len(filtered_devices)} lights:")
+                print(f"\nShowing all {len(filtered_devices)} devices:")
                 if args.room:
                     print(f"(Filtered by room: {args.room})")
             
