@@ -48,13 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     token = entry.data.get(CONF_TOKEN)
     update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
-    
-    # Get ignored device names from environment variable
-    ignored_device_names = os.environ.get("IGNORED_DEVICE_NAMES", "")
-    if ignored_device_names:
-        ignored_device_names = [name.strip() for name in ignored_device_names.split(",")]
-    else:
-        ignored_device_names = DEFAULT_IGNORED_DEVICE_NAMES
+    ignored_device_names = entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
     
     _LOGGER.debug("Ignored device name patterns: %s", ignored_device_names)
 
@@ -204,12 +198,20 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             entry, data={**entry.data, **entry.options}
         )
     
-    # Update coordinator's enabled device types if it exists
+    # Update coordinator's settings if it exists
     if entry.entry_id in hass.data.get(DOMAIN, {}):
         coordinator = hass.data[DOMAIN][entry.entry_id]
+        
+        # Update enabled device types
         if hasattr(coordinator, "enabled_device_types"):
             _LOGGER.debug("Updating coordinator's enabled device types to: %s", new_enabled_types)
             coordinator.enabled_device_types = list(new_enabled_types)
+        
+        # Update ignored device names
+        if hasattr(coordinator, "ignored_device_names"):
+            new_ignored_device_names = entry.options.get(CONF_IGNORED_DEVICE_NAMES, coordinator.ignored_device_names)
+            _LOGGER.debug("Updating coordinator's ignored device names to: %s", new_ignored_device_names)
+            coordinator.ignored_device_names = new_ignored_device_names
     
     # Reload entry
     await async_unload_entry(hass, entry)

@@ -9,7 +9,8 @@
           "host": "Host (IP address or hostname)",
           "token": "API Token",
           "update_interval": "Update Interval (seconds)",
-          "enabled_device_types": "Add Device Types"
+          "enabled_device_types": "Add Device Types",
+          "ignored_device_names": "Ignored Device Names (optional)"
         }
       }
     },
@@ -29,7 +30,8 @@
         "description": "Configure your Crestron Home integration",
         "data": {
           "update_interval": "Update Interval (seconds)",
-          "enabled_device_types": "Add Device Types"
+          "enabled_device_types": "Add Device Types",
+          "ignored_device_names": "Ignored Device Names (optional)"
         }
       }
     },

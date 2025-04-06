@@ -111,7 +111,7 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
             # Get all devices and sensors from the Crestron Home system
             results = await asyncio.gather(
                 self.client.get_devices(self.enabled_device_types, self.ignored_device_names),
-                self.client.get_sensors(),
+                self.client.get_sensors(self.ignored_device_names),
             )
             
             # Check for room name changes if needed

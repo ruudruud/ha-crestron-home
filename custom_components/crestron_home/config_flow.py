@@ -16,8 +16,10 @@ from .api import CrestronApiError, CrestronAuthError, CrestronClient, CrestronCo
 from .const import (
     CONF_ENABLED_DEVICE_TYPES,
     CONF_HOST,
+    CONF_IGNORED_DEVICE_NAMES,
     CONF_TOKEN,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_IGNORED_DEVICE_NAMES,
     DEFAULT_UPDATE_INTERVAL,
     DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_LIGHT,
@@ -133,6 +135,12 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=selector.SelectSelectorMode.LIST,
                         ),
                     ),
+                    vol.Optional(CONF_IGNORED_DEVICE_NAMES, default=DEFAULT_IGNORED_DEVICE_NAMES): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            multiple=True,
+                            suffix="Use % as wildcard (e.g., %bathroom%, bathroom%, %bathroom)",
+                        ),
+                    ),
                 }
             ),
             errors=errors,
@@ -208,6 +216,15 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                             ],
                             multiple=True,
                             mode=selector.SelectSelectorMode.LIST,
+                        ),
+                    ),
+                    vol.Optional(
+                        CONF_IGNORED_DEVICE_NAMES, 
+                        default=self.config_entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
+                    ): selector.TextSelector(
+                        selector.TextSelectorConfig(
+                            multiple=True,
+                            suffix="Use % as wildcard (e.g., %bathroom%, bathroom%, %bathroom)",
                         ),
                     ),
                 }

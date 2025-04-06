@@ -344,10 +344,46 @@ class CrestronClient:
         response = await self._api_request("GET", f"/scenes/{scene_id}")
         return response.get("scenes", [{}])[0]
 
-    async def get_sensors(self) -> List[Dict[str, Any]]:
+    async def get_sensors(self, ignored_device_names: List[str] = None) -> List[Dict[str, Any]]:
         """Get all sensors from the Crestron Home system."""
+        # Get ignored device names from environment if not provided
+        if ignored_device_names is None:
+            ignored_device_names_str = os.environ.get("IGNORED_DEVICE_NAMES", "")
+            if ignored_device_names_str:
+                ignored_device_names = [name.strip() for name in ignored_device_names_str.split(",")]
+            else:
+                ignored_device_names = []
+        
         response = await self._api_request("GET", "/sensors")
-        return response.get("sensors", [])
+        sensors = response.get("sensors", [])
+        
+        # If no ignored patterns, return all sensors
+        if not ignored_device_names:
+            return sensors
+        
+        # Filter out sensors that match ignored patterns
+        filtered_sensors = []
+        for sensor in sensors:
+            # Get room name for the sensor
+            room_name = ""
+            room_id = sensor.get("roomId")
+            if room_id:
+                room_name = next(
+                    (r.get("name", "") for r in self.rooms if r.get("id") == room_id),
+                    "",
+                )
+            
+            sensor_name = f"{room_name} {sensor.get('name', '')}".strip()
+            sensor_type = sensor.get("subType", "")
+            
+            # Check if sensor matches any ignored pattern
+            if not self._matches_ignored_pattern(sensor_name, sensor_type, ignored_device_names):
+                filtered_sensors.append(sensor)
+            else:
+                _LOGGER.debug("Skipped ignored sensor: %s (Type: %s)", 
+                             sensor_name, sensor_type)
+        
+        return filtered_sensors
 
     async def get_sensor(self, sensor_id: int) -> Dict[str, Any]:
         """Get a specific sensor from the Crestron Home system."""
