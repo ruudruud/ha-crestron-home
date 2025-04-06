@@ -84,9 +84,6 @@ class CrestronHomeBaseLight(CrestronRoomEntity, CoordinatorEntity, LightEntity):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
-        
-        # Register with coordinator for room name updates
-        coordinator.register_entity(self)
     
     @property
     def available(self) -> bool:

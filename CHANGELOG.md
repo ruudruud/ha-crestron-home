@@ -6,13 +6,6 @@
 
 - Fixed warning about blocking call to `load_default_certs` in the event loop by moving SSL context creation to initialization
 
-## 0.1.4 (2025-05-04)
-
-### Features
-
-- Added room name synchronization: entity names are now automatically updated when room names are changed in the Crestron Home app
-- Room names are checked every 10 update cycles (approximately every 2.5 minutes with the default 15-second update interval)
-
 ## 0.1.3 (2025-05-04)
 
 ### Improvements

@@ -105,7 +105,6 @@ This integration:
 - Implements proper session management (Crestron sessions expire after 10 minutes)
 - Provides a configuration flow for easy setup through the Home Assistant UI
 - Supports multiple device types with appropriate Home Assistant entity representations
-- Periodically checks for room name changes in the Crestron Home system and updates entity names accordingly
 
 ## Troubleshooting
 

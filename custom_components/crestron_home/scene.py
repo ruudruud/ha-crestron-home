@@ -74,9 +74,6 @@ class CrestronHomeScene(CrestronRoomEntity, Scene):
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device["roomName"],
         )
-        
-        # Register with coordinator for room name updates
-        coordinator.register_entity(self)
     
     # Scenes are always available
     @property
