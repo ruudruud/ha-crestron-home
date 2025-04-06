@@ -19,10 +19,12 @@ CONF_HOST: Final = "host"
 CONF_TOKEN: Final = "token"
 CONF_UPDATE_INTERVAL: Final = "update_interval"
 CONF_ENABLED_DEVICE_TYPES: Final = "enabled_device_types"
+CONF_IGNORED_DEVICE_NAMES: Final = "ignored_device_names"
 
 # Defaults
 DEFAULT_UPDATE_INTERVAL: Final = 15
 MIN_UPDATE_INTERVAL: Final = 10
+DEFAULT_IGNORED_DEVICE_NAMES: Final = []
 
 # Device types
 DEVICE_TYPE_LIGHT: Final = "light"

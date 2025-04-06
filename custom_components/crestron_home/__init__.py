@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, List, Set
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,8 +17,10 @@ from .api import CrestronApiError, CrestronClient
 from .const import (
     CONF_ENABLED_DEVICE_TYPES,
     CONF_HOST,
+    CONF_IGNORED_DEVICE_NAMES,
     CONF_TOKEN,
     CONF_UPDATE_INTERVAL,
+    DEFAULT_IGNORED_DEVICE_NAMES,
     DEFAULT_UPDATE_INTERVAL,
     DEVICE_TYPE_BINARY_SENSOR,
     DEVICE_TYPE_LIGHT,
@@ -45,13 +48,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     token = entry.data.get(CONF_TOKEN)
     update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
     enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    
+    # Get ignored device names from environment variable
+    ignored_device_names = os.environ.get("IGNORED_DEVICE_NAMES", "")
+    if ignored_device_names:
+        ignored_device_names = [name.strip() for name in ignored_device_names.split(",")]
+    else:
+        ignored_device_names = DEFAULT_IGNORED_DEVICE_NAMES
+    
+    _LOGGER.debug("Ignored device name patterns: %s", ignored_device_names)
 
     # Create API client
     client = CrestronClient(hass, host, token)
 
     # Create coordinator
     coordinator = CrestronHomeDataUpdateCoordinator(
-        hass, client, update_interval, enabled_device_types
+        hass, client, update_interval, enabled_device_types, ignored_device_names
     )
 
     # Fetch initial data

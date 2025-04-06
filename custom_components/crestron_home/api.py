@@ -1,6 +1,7 @@
 """API Client for Crestron Home."""
 import asyncio
 import logging
+import os
 import ssl
 import time
 from typing import Any, Dict, List, Optional, cast
@@ -134,9 +135,55 @@ class CrestronClient:
             _LOGGER.error("API request error: %s", error)
             raise CrestronApiError(f"API request error: {error}") from error
 
-    async def get_devices(self, enabled_types: List[str]) -> List[Dict[str, Any]]:
+    def _matches_ignored_pattern(self, name: str, device_type: str, ignored_device_names: List[str]) -> bool:
+        """Check if a device name or type matches any of the ignored patterns.
+        
+        Supports pattern matching with % wildcard:
+        - bathroom → exact match
+        - %bathroom → ends with bathroom
+        - bathroom% → starts with bathroom
+        - %bathroom% → contains bathroom
+        """
+        name = name.lower()
+        device_type = device_type.lower()
+        
+        for pattern in ignored_device_names:
+            pattern = pattern.lower()
+            
+            # Check for different pattern types
+            if pattern.startswith("%") and pattern.endswith("%"):
+                # %bathroom% → contains bathroom
+                search_term = pattern[1:-1]
+                if search_term in name or search_term in device_type:
+                    return True
+            elif pattern.startswith("%"):
+                # %bathroom → ends with bathroom
+                if name.endswith(pattern[1:]) or device_type.endswith(pattern[1:]):
+                    return True
+            elif pattern.endswith("%"):
+                # bathroom% → starts with bathroom
+                if name.startswith(pattern[:-1]) or device_type.startswith(pattern[:-1]):
+                    return True
+            else:
+                # bathroom → exact match
+                if name == pattern or device_type == pattern:
+                    return True
+        
+        return False
+
+    async def get_devices(self, enabled_types: List[str], ignored_device_names: List[str] = None) -> List[Dict[str, Any]]:
         """Get all devices from the Crestron Home system."""
         _LOGGER.debug("Getting devices from Crestron Home with enabled types: %s", enabled_types)
+        
+        # Get ignored device names from environment if not provided
+        if ignored_device_names is None:
+            ignored_device_names_str = os.environ.get("IGNORED_DEVICE_NAMES", "")
+            if ignored_device_names_str:
+                ignored_device_names = [name.strip() for name in ignored_device_names_str.split(",")]
+            else:
+                ignored_device_names = []
+        
+        _LOGGER.debug("Using ignored device name patterns: %s", ignored_device_names)
         
         try:
             # Get rooms, scenes, devices, and shades in parallel
@@ -200,15 +247,15 @@ class CrestronClient:
                     "ha_device_type": ha_device_type,
                 }
                 
-                # Add device if its mapped type is in enabled_types and it's not a Circadian device
+                # Add device if its mapped type is in enabled_types and it doesn't match ignored patterns
                 if ha_device_type and ha_device_type in enabled_types:
-                    # Check if 'circadian' appears in device name or type (case insensitive)
-                    if 'circadian' not in device_info['name'].lower() and 'circadian' not in device_type.lower():
+                    # Check if device matches any ignored pattern
+                    if not self._matches_ignored_pattern(device_info['name'], device_type, ignored_device_names):
                         devices.append(device_info)
                         _LOGGER.debug("Added %s device: %s (ID: %s)", 
                                      ha_device_type, device_info["name"], device_info["id"])
                     else:
-                        _LOGGER.debug("Skipped Circadian device: %s (Type: %s)", 
+                        _LOGGER.debug("Skipped ignored device: %s (Type: %s)", 
                                      device_info["name"], device_type)
                 else:
                     _LOGGER.debug("Skipped device: %s (Type: %s, Mapped Type: %s)", 
@@ -235,13 +282,13 @@ class CrestronClient:
                         "ha_device_type": "scene",
                     }
                     
-                    # Check if 'circadian' appears in scene name or type (case insensitive)
-                    if 'circadian' not in scene_info['name'].lower() and 'circadian' not in scene_info['subType'].lower():
+                    # Check if scene matches any ignored pattern
+                    if not self._matches_ignored_pattern(scene_info['name'], scene_info['subType'], ignored_device_names):
                         devices.append(scene_info)
                         _LOGGER.debug("Added scene: %s (ID: %s)", 
                                      scene_info["name"], scene_info["id"])
                     else:
-                        _LOGGER.debug("Skipped Circadian scene: %s (Type: %s)", 
+                        _LOGGER.debug("Skipped ignored scene: %s (Type: %s)", 
                                      scene_info["name"], scene_info["subType"])
             
             _LOGGER.info("Found %d devices matching enabled types", len(devices))

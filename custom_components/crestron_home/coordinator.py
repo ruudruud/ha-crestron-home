@@ -32,10 +32,12 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
         client: CrestronClient,
         update_interval: int,
         enabled_device_types: List[str],
+        ignored_device_names: List[str] = None,
     ) -> None:
         """Initialize the coordinator."""
         self.client = client
         self.enabled_device_types = enabled_device_types
+        self.ignored_device_names = ignored_device_names or []
         self.devices: List[Dict[str, Any]] = []
         self.platforms = []
         
@@ -56,6 +58,45 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=update_interval),
         )
 
+    def _matches_ignored_pattern(self, name: str, device_type: str) -> bool:
+        """Check if a device name or type matches any of the ignored patterns.
+        
+        Supports pattern matching with % wildcard:
+        - bathroom → exact match
+        - %bathroom → ends with bathroom
+        - bathroom% → starts with bathroom
+        - %bathroom% → contains bathroom
+        """
+        if not self.ignored_device_names:
+            return False
+            
+        name = name.lower()
+        device_type = device_type.lower()
+        
+        for pattern in self.ignored_device_names:
+            pattern = pattern.lower()
+            
+            # Check for different pattern types
+            if pattern.startswith("%") and pattern.endswith("%"):
+                # %bathroom% → contains bathroom
+                search_term = pattern[1:-1]
+                if search_term in name or search_term in device_type:
+                    return True
+            elif pattern.startswith("%"):
+                # %bathroom → ends with bathroom
+                if name.endswith(pattern[1:]) or device_type.endswith(pattern[1:]):
+                    return True
+            elif pattern.endswith("%"):
+                # bathroom% → starts with bathroom
+                if name.startswith(pattern[:-1]) or device_type.startswith(pattern[:-1]):
+                    return True
+            else:
+                # bathroom → exact match
+                if name == pattern or device_type == pattern:
+                    return True
+        
+        return False
+
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via API client."""
         try:
@@ -69,7 +110,7 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
             
             # Get all devices and sensors from the Crestron Home system
             results = await asyncio.gather(
-                self.client.get_devices(self.enabled_device_types),
+                self.client.get_devices(self.enabled_device_types, self.ignored_device_names),
                 self.client.get_sensors(),
             )
             
@@ -127,9 +168,9 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
                         # Create sensor info
                         sensor_name = f"{room_name} {sensor.get('name', '')}".strip()
                         
-                        # Skip sensors with 'Circadian' in the name (case insensitive)
-                        if 'circadian' in sensor_name.lower() or 'circadian' in sub_type.lower():
-                            _LOGGER.debug("Skipped Circadian sensor: %s (Type: %s)", 
+                        # Skip sensors that match ignored patterns
+                        if self._matches_ignored_pattern(sensor_name, sub_type):
+                            _LOGGER.debug("Skipped ignored sensor: %s (Type: %s)", 
                                          sensor_name, sub_type)
                             continue
                         
