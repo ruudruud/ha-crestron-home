@@ -48,14 +48,20 @@ class CrestronClient:
         self.last_login: float = 0
         self.rooms: List[Dict[str, Any]] = []
         self._session = async_get_clientsession(hass, verify_ssl=False)
-        
-        # Create SSL context once during initialization to avoid blocking calls in the event loop
-        self._ssl_context = ssl.create_default_context()
-        self._ssl_context.check_hostname = False
-        self._ssl_context.verify_mode = ssl.CERT_NONE
+        self._ssl_context = None
         
         # Add a lock for login to prevent multiple simultaneous login attempts
         self._login_lock = asyncio.Lock()
+
+    async def _create_ssl_context(self) -> ssl.SSLContext:
+        """Create SSL context in executor to avoid blocking the event loop."""
+        def _create_context():
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            return context
+            
+        return await self.hass.async_add_executor_job(_create_context)
 
     async def login(self) -> None:
         """Login to the Crestron Home system."""
@@ -76,7 +82,10 @@ class CrestronClient:
             _LOGGER.debug("Logging in to Crestron Home at %s", self.base_url)
             
             try:
-                # Use the pre-created SSL context
+                # Create SSL context if not already created
+                if self._ssl_context is None:
+                    self._ssl_context = await self._create_ssl_context()
+                
                 # Make login request
                 async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl_context)) as session:
                     headers = {
