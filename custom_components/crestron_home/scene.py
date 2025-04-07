@@ -66,12 +66,15 @@ class CrestronHomeScene(CrestronRoomEntity, Scene):
         self._attr_name = device.full_name
         self._attr_has_entity_name = False
         
+        # Get the scene type from raw_data if available
+        scene_type = device.raw_data.get("sceneType", "")
+        
         # Set up device info
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, str(device.id))},
             name=device.full_name,
             manufacturer=MANUFACTURER,
-            model=MODEL,
+            model=f"{MODEL} {scene_type}",  # Include scene type in model
             via_device=(DOMAIN, coordinator.client.host),
             suggested_area=device.room,
         )

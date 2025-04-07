@@ -269,10 +269,13 @@ class CrestronClient:
                         "",
                     )
                     
+                    # Always set type to "Scene" regardless of the scene's type field
+                    # This ensures shade scenes are treated as scenes, not shades
                     scene_info = {
                         "id": scene.get("id"),
                         "type": "Scene",
-                        "subType": scene.get("type", ""),
+                        "subType": "Scene",  # Always use "Scene" as subType
+                        "sceneType": scene.get("type", ""),  # Store original type as sceneType
                         "name": f"{room_name} {scene.get('name', '')}",
                         "roomId": scene.get("roomId"),
                         "roomName": room_name,
@@ -283,13 +286,13 @@ class CrestronClient:
                     }
                     
                     # Check if scene matches any ignored pattern
-                    if not self._matches_ignored_pattern(scene_info['name'], scene_info['subType'], ignored_device_names):
+                    if not self._matches_ignored_pattern(scene_info['name'], scene_info['sceneType'], ignored_device_names):
                         devices.append(scene_info)
-                        _LOGGER.debug("Added scene: %s (ID: %s)", 
-                                     scene_info["name"], scene_info["id"])
+                        _LOGGER.debug("Added scene: %s (ID: %s, Type: %s)", 
+                                     scene_info["name"], scene_info["id"], scene_info["sceneType"])
                     else:
                         _LOGGER.debug("Skipped ignored scene: %s (Type: %s)", 
-                                     scene_info["name"], scene_info["subType"])
+                                     scene_info["name"], scene_info["sceneType"])
             
             _LOGGER.info("Found %d devices matching enabled types", len(devices))
             return devices
