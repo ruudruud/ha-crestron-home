@@ -29,6 +29,42 @@ _LOGGER = logging.getLogger(__name__)
 class CrestronDeviceManager:
     """Manager for Crestron devices."""
 
+    def _update_ha_parameters(self, device: CrestronDevice) -> None:
+        """Update Home Assistant parameters based on device status.
+        
+        Logic:
+        - If device is functioning normally: state = available, registry = enabled
+        - If device is offline: state = unavailable, registry = enabled
+        - If device is disabled via config filter: registry = disabled, state = N/A
+        - If device is disabled via config disabled category: registry = disabled, state = N/A
+        """
+        
+        # Check if device is in ignored list (config filter)
+        if self._matches_ignored_pattern(device.full_name, device.type):
+            device.ha_registry = False
+            device.ha_state = None  # N/A
+            device.ha_reason = "Device filtered by config"
+            return
+            
+        # Check if device type is disabled (config disabled category)
+        ha_device_type = self._get_ha_device_type(device.type, device.subtype)
+        if ha_device_type not in self.enabled_device_types:
+            device.ha_registry = False
+            device.ha_state = None  # N/A
+            device.ha_reason = "Device type disabled in config"
+            return
+            
+        # Device is enabled in registry
+        device.ha_registry = True
+        
+        # Check connection status for availability
+        if device.connection == "offline":
+            device.ha_state = False  # Unavailable
+            device.ha_reason = "Device is offline"
+        else:
+            device.ha_state = True  # Available
+            device.ha_reason = ""  # No reason needed for normal operation
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -203,6 +239,9 @@ class CrestronDeviceManager:
                 
                 # Update raw data
                 device.raw_data = device_data
+                
+                # Update Home Assistant parameters
+                self._update_ha_parameters(device)
             else:
                 # Set appropriate connection status
                 # Scenes don't have a physical connection status
@@ -223,13 +262,11 @@ class CrestronDeviceManager:
                     raw_data=device_data,
                 )
                 
-                # Set Home Assistant visibility
-                device.ha_registry = True
-                device.ha_state = True
-                device.ha_reason = ""
-                
                 # Add to devices dictionary
                 self.devices[device_id] = device
+                
+                # Update Home Assistant parameters
+                self._update_ha_parameters(device)
 
     def _process_sensors(self, sensors_data: List[Dict[str, Any]]) -> None:
         """Process sensor data from the API and update the device snapshot."""
@@ -292,6 +329,9 @@ class CrestronDeviceManager:
                 
                 # Update raw data
                 sensor.raw_data = sensor_data
+                
+                # Update Home Assistant parameters
+                self._update_ha_parameters(sensor)
             else:
                 # Create new sensor
                 sensor = CrestronDevice(
@@ -317,13 +357,11 @@ class CrestronDeviceManager:
                     sensor.value = sensor_data.get("level", 0)
                     sensor.level = sensor_data.get("level", 0)
                 
-                # Set Home Assistant visibility
-                sensor.ha_registry = True
-                sensor.ha_state = True
-                sensor.ha_reason = ""
-                
                 # Add to devices dictionary
                 self.devices[sensor_id] = sensor
+                
+                # Update Home Assistant parameters
+                self._update_ha_parameters(sensor)
 
     def _get_ha_device_type(self, device_type: str, subtype: str) -> Optional[str]:
         """Map Crestron device type to Home Assistant device type."""
