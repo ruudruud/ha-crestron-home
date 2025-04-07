@@ -244,6 +244,7 @@ class CrestronClient:
                     "level": device.get("level", 0),
                     "status": device.get("status", False),
                     "position": shade_position,
+                    "connectionStatus": device.get("connectionStatus", "online"),
                     "ha_device_type": ha_device_type,
                 }
                 
@@ -282,6 +283,7 @@ class CrestronClient:
                         "level": 0,
                         "status": scene.get("status", False),
                         "position": 0,
+                        "connectionStatus": "n/a",  # Scenes don't have a physical connection status
                         "ha_device_type": "scene",
                     }
                     
