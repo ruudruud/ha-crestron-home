@@ -187,7 +187,14 @@ class CrestronDeviceManager:
                 device = self.devices[device_id]
                 device.status = device_data.get("status", False)
                 device.level = device_data.get("level", 0)
-                device.connection = device_data.get("connectionStatus", "online")
+                
+                # Set appropriate connection status for update
+                # Scenes don't have a physical connection status
+                if device_type == "Scene":
+                    device.connection = "n/a"
+                else:
+                    device.connection = device_data.get("connectionStatus", "online")
+                
                 device.last_updated = datetime.now()
                 
                 # Update position for shades
@@ -197,6 +204,10 @@ class CrestronDeviceManager:
                 # Update raw data
                 device.raw_data = device_data
             else:
+                # Set appropriate connection status
+                # Scenes don't have a physical connection status
+                connection_status = "n/a" if device_type == "Scene" else device_data.get("connectionStatus", "online")
+                
                 # Create new device
                 device = CrestronDevice(
                     id=device_id,
@@ -206,7 +217,7 @@ class CrestronDeviceManager:
                     subtype=device_type,
                     status=device_data.get("status", False),
                     level=device_data.get("level", 0),
-                    connection=device_data.get("connectionStatus", "online"),
+                    connection=connection_status,
                     room_id=room_id,
                     position=device_data.get("position", 0) if device_type == "Shade" else 0,
                     raw_data=device_data,
@@ -385,7 +396,7 @@ class CrestronDeviceManager:
                 _LOGGER.info("  Status: %s / Level: %d", "ON" if device.status else "OFF", device.level)
                 _LOGGER.info("  Connection: %s / Last Updated: %s", 
                             device.connection, device.last_updated.isoformat())
-                _LOGGER.info("  HA Visible: %s / HA Enabled: %s / HA Reason: %s",
+                _LOGGER.info("  Visible in HA: %s / Enabled in HA: %s / Reason: %s",
                             device.ha_visible, device.ha_enabled, device.ha_reason or "None")
                 
                 # Log device-specific properties
