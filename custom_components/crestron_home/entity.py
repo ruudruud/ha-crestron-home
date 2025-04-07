@@ -4,6 +4,8 @@ from typing import Any, Dict, Optional
 
 from homeassistant.helpers.entity import Entity
 
+from .models import CrestronDevice
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -13,4 +15,6 @@ class CrestronRoomEntity:
     @property
     def room_id(self) -> Optional[int]:
         """Return the room ID for this entity."""
-        return self._device_info.get("roomId")
+        if isinstance(self._device_info, CrestronDevice):
+            return self._device_info.room_id
+        return None

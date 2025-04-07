@@ -21,6 +21,7 @@ from .const import (
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
 from .entity import CrestronRoomEntity
+from .models import CrestronDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,24 +56,24 @@ class CrestronHomeScene(CrestronRoomEntity, Scene):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the scene."""
         self.coordinator = coordinator
         self._device_info = device  # Store as _device_info for CrestronRoomEntity
         self._device = device  # Keep _device for backward compatibility
-        self._attr_unique_id = f"crestron_scene_{device['id']}"
-        self._attr_name = device["name"]
+        self._attr_unique_id = f"crestron_scene_{device.id}"
+        self._attr_name = device.full_name
         self._attr_has_entity_name = False
         
         # Set up device info
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(device["id"]))},
-            name=device["name"],
+            identifiers={(DOMAIN, str(device.id))},
+            name=device.full_name,
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
-            suggested_area=device["roomName"],
+            suggested_area=device.room,
         )
     
     # Scenes are always available
@@ -83,7 +84,7 @@ class CrestronHomeScene(CrestronRoomEntity, Scene):
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""
-        await self.coordinator.client.execute_scene(self._device["id"])
+        await self.coordinator.client.execute_scene(self._device.id)
         
         # Request a coordinator update to get the new state
         await self.coordinator.async_request_refresh()
@@ -92,7 +93,7 @@ class CrestronHomeScene(CrestronRoomEntity, Scene):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         for device in self.coordinator.data.get(DEVICE_TYPE_SCENE, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 self._device = device
                 self._device_info = device  # Update _device_info for CrestronRoomEntity
                 break

@@ -28,6 +28,7 @@ from .const import (
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
 from .entity import CrestronRoomEntity
+from .models import CrestronDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -62,14 +63,14 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the shade."""
         super().__init__(coordinator)
         self._device_info = device  # Store as _device_info for CrestronRoomEntity
         self._device = device  # Keep _device for backward compatibility
-        self._attr_unique_id = f"crestron_shade_{device['id']}"
-        self._attr_name = device["name"]
+        self._attr_unique_id = f"crestron_shade_{device.id}"
+        self._attr_name = device.full_name
         self._attr_has_entity_name = False
         self._attr_device_class = CoverDeviceClass.SHADE
         
@@ -83,12 +84,12 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         
         # Set up device info
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(device["id"]))},
-            name=device["name"],
+            identifiers={(DOMAIN, str(device.id))},
+            name=device.full_name,
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
-            suggested_area=device["roomName"],
+            suggested_area=device.room,
         )
     
     @property
@@ -96,12 +97,11 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         """Return if entity is available."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_SHADE, []):
-            if device["id"] == self._device["id"]:
-                # If connectionStatus is not present or not "offline", consider it available
-                return device.get("connectionStatus", "online") != "offline"
+            if device.id == self._device.id:
+                return device.is_available
         
         # If device not found, use the stored state
-        return self._device.get("connectionStatus", "online") != "offline"
+        return self._device.is_available
 
     @property
     def current_cover_position(self) -> int:
@@ -111,11 +111,11 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         """
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_SHADE, []):
-            if device["id"] == self._device["id"]:
-                return CrestronClient.crestron_to_percentage(device["position"])
+            if device.id == self._device.id:
+                return CrestronClient.crestron_to_percentage(device.position)
         
         # If device not found, use the stored state
-        return CrestronClient.crestron_to_percentage(self._device["position"])
+        return CrestronClient.crestron_to_percentage(self._device.position)
 
     @property
     def is_closed(self) -> bool:
@@ -125,7 +125,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
     async def async_open_cover(self, **kwargs: Any) -> None:
         """Open the cover."""
         await self.coordinator.client.set_shade_position(
-            self._device["id"], CrestronClient.percentage_to_crestron(100)
+            self._device.id, CrestronClient.percentage_to_crestron(100)
         )
         
         # Request a coordinator update to get the new state
@@ -134,7 +134,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
     async def async_close_cover(self, **kwargs: Any) -> None:
         """Close the cover."""
         await self.coordinator.client.set_shade_position(
-            self._device["id"], 0
+            self._device.id, 0
         )
         
         # Request a coordinator update to get the new state
@@ -145,7 +145,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         # Get the current position and set it again to stop movement
         current_position = self.current_cover_position
         await self.coordinator.client.set_shade_position(
-            self._device["id"], CrestronClient.percentage_to_crestron(current_position)
+            self._device.id, CrestronClient.percentage_to_crestron(current_position)
         )
         
         # Request a coordinator update to get the new state
@@ -156,7 +156,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         if ATTR_POSITION in kwargs:
             position = kwargs[ATTR_POSITION]
             await self.coordinator.client.set_shade_position(
-                self._device["id"], CrestronClient.percentage_to_crestron(position)
+                self._device.id, CrestronClient.percentage_to_crestron(position)
             )
             
             # Request a coordinator update to get the new state
@@ -166,7 +166,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         for device in self.coordinator.data.get(DEVICE_TYPE_SHADE, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 self._device = device
                 self._device_info = device  # Update _device_info for CrestronRoomEntity
                 break

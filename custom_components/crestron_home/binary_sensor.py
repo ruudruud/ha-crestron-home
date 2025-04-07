@@ -25,6 +25,7 @@ from .const import (
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
 from .entity import CrestronRoomEntity
+from .models import CrestronDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,9 +48,9 @@ async def async_setup_entry(
     binary_sensors = []
     
     for device in coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-        if device.get("subType") == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
+        if device.subtype == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
             binary_sensors.append(CrestronHomeOccupancySensor(coordinator, device))
-        elif device.get("subType") == DEVICE_SUBTYPE_DOOR_SENSOR:
+        elif device.subtype == DEVICE_SUBTYPE_DOOR_SENSOR:
             binary_sensors.append(CrestronHomeDoorSensor(coordinator, device))
     
     _LOGGER.debug("Adding %d binary sensor entities", len(binary_sensors))
@@ -62,24 +63,24 @@ class CrestronHomeBinarySensor(CrestronRoomEntity, CoordinatorEntity, BinarySens
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator)
         self._device_info = device  # Store as _device_info for CrestronRoomEntity
         self._device = device  # Keep _device for backward compatibility
-        self._attr_unique_id = f"crestron_binary_sensor_{device['id']}"
-        self._attr_name = device["name"]
+        self._attr_unique_id = f"crestron_binary_sensor_{device.id}"
+        self._attr_name = device.full_name
         self._attr_has_entity_name = False
         
         # Set up device info
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(device["id"]))},
-            name=device["name"],
+            identifiers={(DOMAIN, str(device.id))},
+            name=device.full_name,
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
-            suggested_area=device["roomName"],
+            suggested_area=device.room,
         )
     
     @property
@@ -87,18 +88,17 @@ class CrestronHomeBinarySensor(CrestronRoomEntity, CoordinatorEntity, BinarySens
         """Return if entity is available."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-            if device["id"] == self._device["id"]:
-                # If connectionStatus is not present or not "offline", consider it available
-                return device.get("connectionStatus", "online") != "offline"
+            if device.id == self._device.id:
+                return device.is_available
         
         # If device not found, use the stored state
-        return self._device.get("connectionStatus", "online") != "offline"
+        return self._device.is_available
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 self._device = device
                 self._device_info = device  # Update _device_info for CrestronRoomEntity
                 break
@@ -112,7 +112,7 @@ class CrestronHomeOccupancySensor(CrestronHomeBinarySensor):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the occupancy sensor."""
         super().__init__(coordinator, device)
@@ -123,14 +123,12 @@ class CrestronHomeOccupancySensor(CrestronHomeBinarySensor):
         """Return true if the binary sensor is on."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 # "Vacant" or "Unavailable" means no occupancy, anything else means occupied
-                presence = device.get("presence", "Unavailable")
-                return presence != "Vacant" and presence != "Unavailable"
+                return device.presence != "Vacant" and device.presence != "Unavailable"
         
         # If device not found, use the stored state
-        presence = self._device.get("presence", "Unavailable")
-        return presence != "Vacant" and presence != "Unavailable"
+        return self._device.presence != "Vacant" and self._device.presence != "Unavailable"
 
 
 class CrestronHomeDoorSensor(CrestronHomeBinarySensor):
@@ -139,7 +137,7 @@ class CrestronHomeDoorSensor(CrestronHomeBinarySensor):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the door sensor."""
         super().__init__(coordinator, device)
@@ -150,12 +148,12 @@ class CrestronHomeDoorSensor(CrestronHomeBinarySensor):
         """Return true if the binary sensor is on (door is open)."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 # "Closed" means door is closed, "Open" means door is open
-                return device.get("door_status", "Closed") == "Open"
+                return device.door_status == "Open"
         
         # If device not found, use the stored state
-        return self._device.get("door_status", "Closed") == "Open"
+        return self._device.door_status == "Open"
     
     @property
     def extra_state_attributes(self) -> Dict[str, Any]:
@@ -167,13 +165,13 @@ class CrestronHomeDoorSensor(CrestronHomeBinarySensor):
         
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
-            if device["id"] == self._device["id"]:
-                battery_level = device.get("battery_level")
+            if device.id == self._device.id:
+                battery_level = device.battery_level
                 break
         
         # If device not found, use the stored state
         if battery_level is None:
-            battery_level = self._device.get("battery_level")
+            battery_level = self._device.battery_level
         
         if battery_level:
             attributes["battery_level"] = battery_level

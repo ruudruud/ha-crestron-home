@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 (2025-07-04)
+
+### Features
+
+- Added intermediate abstraction layer between Crestron Home API and Home Assistant
+- Implemented consistent device snapshot with improved state tracking
+- Added support for device visibility and enabled logic
+- Improved data model with standardized fields across device types
+
+### Improvements
+
+- Refactored coordinator to use the new abstraction layer
+- Updated entity classes to work with the new device model
+- Improved error handling and logging
+- Enhanced documentation with technical details about the abstraction layer
+
 ## 0.1.5 (2025-05-04)
 
 ### Bug Fixes

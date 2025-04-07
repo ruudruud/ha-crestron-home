@@ -28,6 +28,7 @@ from .const import (
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
 from .entity import CrestronRoomEntity
+from .models import CrestronDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ async def async_setup_entry(
     sensors = []
     
     for device in coordinator.data.get(DEVICE_TYPE_SENSOR, []):
-        if device.get("subType") == DEVICE_SUBTYPE_PHOTO_SENSOR:
+        if device.subtype == DEVICE_SUBTYPE_PHOTO_SENSOR:
             sensors.append(CrestronHomePhotoSensor(coordinator, device))
     
     _LOGGER.debug("Adding %d sensor entities", len(sensors))
@@ -63,24 +64,24 @@ class CrestronHomeSensor(CrestronRoomEntity, CoordinatorEntity, SensorEntity):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._device_info = device  # Store as _device_info for CrestronRoomEntity
         self._device = device  # Keep _device for backward compatibility
-        self._attr_unique_id = f"crestron_sensor_{device['id']}"
-        self._attr_name = device["name"]
+        self._attr_unique_id = f"crestron_sensor_{device.id}"
+        self._attr_name = device.full_name
         self._attr_has_entity_name = False
         
         # Set up device info
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, str(device["id"]))},
-            name=device["name"],
+            identifiers={(DOMAIN, str(device.id))},
+            name=device.full_name,
             manufacturer=MANUFACTURER,
             model=MODEL,
             via_device=(DOMAIN, coordinator.client.host),
-            suggested_area=device["roomName"],
+            suggested_area=device.room,
         )
     
     @property
@@ -88,18 +89,17 @@ class CrestronHomeSensor(CrestronRoomEntity, CoordinatorEntity, SensorEntity):
         """Return if entity is available."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_SENSOR, []):
-            if device["id"] == self._device["id"]:
-                # If connectionStatus is not present or not "offline", consider it available
-                return device.get("connectionStatus", "online") != "offline"
+            if device.id == self._device.id:
+                return device.is_available
         
         # If device not found, use the stored state
-        return self._device.get("connectionStatus", "online") != "offline"
+        return self._device.is_available
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
         for device in self.coordinator.data.get(DEVICE_TYPE_SENSOR, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 self._device = device
                 self._device_info = device  # Update _device_info for CrestronRoomEntity
                 break
@@ -113,7 +113,7 @@ class CrestronHomePhotoSensor(CrestronHomeSensor):
     def __init__(
         self,
         coordinator: CrestronHomeDataUpdateCoordinator,
-        device: Dict[str, Any],
+        device: CrestronDevice,
     ) -> None:
         """Initialize the photosensor."""
         super().__init__(coordinator, device)
@@ -126,9 +126,9 @@ class CrestronHomePhotoSensor(CrestronHomeSensor):
         """Return the state of the sensor."""
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_SENSOR, []):
-            if device["id"] == self._device["id"]:
+            if device.id == self._device.id:
                 # Return the light level in lux
-                return float(device.get("level", 0))
+                return float(device.value or device.level or 0)
         
         # If device not found, use the stored state
-        return float(self._device.get("level", 0))
+        return float(self._device.value or self._device.level or 0)

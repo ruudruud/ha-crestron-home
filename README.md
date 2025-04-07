@@ -105,6 +105,38 @@ This integration:
 - Implements proper session management (Crestron sessions expire after 10 minutes)
 - Provides a configuration flow for easy setup through the Home Assistant UI
 - Supports multiple device types with appropriate Home Assistant entity representations
+- Includes an abstraction layer that maintains a consistent snapshot of all devices
+- Handles device state normalization and visibility logic
+
+### Abstraction Layer
+
+The integration includes an intermediate abstraction layer that sits between the Crestron Home API and Home Assistant. This layer:
+
+- Polls devices at a fixed interval configured by the user
+- Maintains a consistent snapshot of all devices in the system
+- Normalizes device states across different device types
+- Handles visibility and enabled logic for Home Assistant
+- Provides a clean interface for debugging and troubleshooting
+
+### Debug Script
+
+The integration includes a debug script (`crestron_debug.py`) that can be used to test the abstraction layer and view the device snapshot. This is useful for troubleshooting issues with the integration.
+
+To use the debug script:
+
+```bash
+python3 crestron_debug.py --host <crestron_host> --token <api_token> [--types light,shade,scene] [--ignore pattern1,pattern2] [--output snapshot.json] [--verbose]
+```
+
+Options:
+- `--host`: The IP address or hostname of your Crestron Home processor (required)
+- `--token`: The API token for your Crestron Home system (required)
+- `--types`: Comma-separated list of device types to include (default: all types)
+- `--ignore`: Comma-separated list of device name patterns to ignore
+- `--output`: Output file for the device snapshot (default: crestron_snapshot.json)
+- `--verbose`: Enable verbose logging
+
+The script will connect to your Crestron Home system, poll all devices, and save a snapshot of the device state to a JSON file. This can be useful for debugging issues with the integration.
 
 ## Troubleshooting
 
