@@ -33,28 +33,12 @@ class CrestronDeviceManager:
         """Update Home Assistant parameters based on device status.
         
         Logic:
-        - If device is functioning normally: state = available, registry = enabled
-        - If device is offline: state = unavailable, registry = enabled
-        - If device is disabled via config filter: registry = disabled, state = N/A
-        - If device is disabled via config disabled category: registry = disabled, state = N/A
+        - All devices are registered in Home Assistant (ha_registry = True)
+        - If device is functioning normally: state = available
+        - If device is offline: state = unavailable
         """
         
-        # Check if device is in ignored list (config filter)
-        if self._matches_ignored_pattern(device.full_name, device.type):
-            device.ha_registry = False
-            device.ha_state = None  # N/A
-            device.ha_reason = "Device filtered by config"
-            return
-            
-        # Check if device type is disabled (config disabled category)
-        ha_device_type = self._get_ha_device_type(device.type, device.subtype)
-        if ha_device_type not in self.enabled_device_types:
-            device.ha_registry = False
-            device.ha_state = None  # N/A
-            device.ha_reason = "Device type disabled in config"
-            return
-            
-        # Device is enabled in registry
+        # Always register the device in Home Assistant
         device.ha_registry = True
         
         # Check connection status for availability
@@ -209,9 +193,7 @@ class CrestronDeviceManager:
             device_type = device_data.get("subType") or device_data.get("type", "")
             ha_device_type = self._get_ha_device_type(device_type, device_type)
             
-            # Skip devices that don't map to an enabled Home Assistant device type
-            if not ha_device_type or ha_device_type not in self.enabled_device_types:
-                continue
+            # Process all devices regardless of type
                 
             # Get room information
             room_id = device_data.get("roomId")
@@ -286,9 +268,7 @@ class CrestronDeviceManager:
             elif sensor_type == DEVICE_SUBTYPE_PHOTO_SENSOR:
                 ha_device_type = DEVICE_TYPE_SENSOR
             
-            # Skip sensors that don't map to an enabled Home Assistant device type
-            if not ha_device_type or ha_device_type not in self.enabled_device_types:
-                continue
+            # Process all sensors regardless of type
                 
             # Get room information
             room_id = sensor_data.get("roomId")
@@ -302,11 +282,7 @@ class CrestronDeviceManager:
             # Create sensor name
             sensor_name = f"{room_name} {sensor_data.get('name', '')}".strip()
             
-            # Skip sensors that match ignored patterns
-            if self._matches_ignored_pattern(sensor_name, sensor_type):
-                _LOGGER.debug("Skipped ignored sensor: %s (Type: %s)", 
-                             sensor_name, sensor_type)
-                continue
+            # Process all sensors regardless of ignored patterns
             
             # Create or update sensor
             if sensor_id in self.devices:

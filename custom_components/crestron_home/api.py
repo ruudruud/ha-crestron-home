@@ -155,42 +155,6 @@ class CrestronClient:
             _LOGGER.error("API request error: %s", error)
             raise CrestronApiError(f"API request error: {error}") from error
 
-    def _matches_ignored_pattern(self, name: str, device_type: str, ignored_device_names: List[str]) -> bool:
-        """Check if a device name or type matches any of the ignored patterns.
-        
-        Supports pattern matching with % wildcard:
-        - bathroom → exact match
-        - %bathroom → ends with bathroom
-        - bathroom% → starts with bathroom
-        - %bathroom% → contains bathroom
-        """
-        name = name.lower()
-        device_type = device_type.lower()
-        
-        for pattern in ignored_device_names:
-            pattern = pattern.lower()
-            
-            # Check for different pattern types
-            if pattern.startswith("%") and pattern.endswith("%"):
-                # %bathroom% → contains bathroom
-                search_term = pattern[1:-1]
-                if search_term in name or search_term in device_type:
-                    return True
-            elif pattern.startswith("%"):
-                # %bathroom → ends with bathroom
-                if name.endswith(pattern[1:]) or device_type.endswith(pattern[1:]):
-                    return True
-            elif pattern.endswith("%"):
-                # bathroom% → starts with bathroom
-                if name.startswith(pattern[:-1]) or device_type.startswith(pattern[:-1]):
-                    return True
-            else:
-                # bathroom → exact match
-                if name == pattern or device_type == pattern:
-                    return True
-        
-        return False
-
     async def get_devices(self, enabled_types: List[str], ignored_device_names: List[str] = None) -> List[Dict[str, Any]]:
         """Get all devices from the Crestron Home system."""
         _LOGGER.debug("Getting devices from Crestron Home with enabled types: %s", enabled_types)
@@ -268,53 +232,38 @@ class CrestronClient:
                     "ha_device_type": ha_device_type,
                 }
                 
-                # Add device if its mapped type is in enabled_types and it doesn't match ignored patterns
-                if ha_device_type and ha_device_type in enabled_types:
-                    # Check if device matches any ignored pattern
-                    if not self._matches_ignored_pattern(device_info['name'], device_type, ignored_device_names):
-                        devices.append(device_info)
-                        _LOGGER.debug("Added %s device: %s (ID: %s)", 
-                                     ha_device_type, device_info["name"], device_info["id"])
-                    else:
-                        _LOGGER.debug("Skipped ignored device: %s (Type: %s)", 
-                                     device_info["name"], device_type)
-                else:
-                    _LOGGER.debug("Skipped device: %s (Type: %s, Mapped Type: %s)", 
-                                 device_info["name"], device_type, ha_device_type)
+                # Add all devices regardless of type or ignored pattern
+                devices.append(device_info)
+                _LOGGER.debug("Added %s device: %s (ID: %s)", 
+                             ha_device_type or "unknown", device_info["name"], device_info["id"])
             
-            # Process scenes
-            if "scene" in enabled_types:
-                for scene in scenes_data.get("scenes", []):
-                    room_name = next(
-                        (r.get("name", "") for r in self.rooms if r.get("id") == scene.get("roomId")),
-                        "",
-                    )
-                    
-                    # Always set type to "Scene" regardless of the scene's type field
-                    # This ensures shade scenes are treated as scenes, not shades
-                    scene_info = {
-                        "id": scene.get("id"),
-                        "type": "Scene",
-                        "subType": "Scene",  # Always use "Scene" as subType
-                        "sceneType": scene.get("type", ""),  # Store original type as sceneType
-                        "name": f"{room_name} {scene.get('name', '')}",
-                        "roomId": scene.get("roomId"),
-                        "roomName": room_name,
-                        "level": 0,
-                        "status": scene.get("status", False),
-                        "position": 0,
-                        "connectionStatus": "n/a",  # Scenes don't have a physical connection status
-                        "ha_device_type": "scene",
-                    }
-                    
-                    # Check if scene matches any ignored pattern
-                    if not self._matches_ignored_pattern(scene_info['name'], scene_info['sceneType'], ignored_device_names):
-                        devices.append(scene_info)
-                        _LOGGER.debug("Added scene: %s (ID: %s, Type: %s)", 
-                                     scene_info["name"], scene_info["id"], scene_info["sceneType"])
-                    else:
-                        _LOGGER.debug("Skipped ignored scene: %s (Type: %s)", 
-                                     scene_info["name"], scene_info["sceneType"])
+            # Process scenes - add all scenes regardless of enabled_types or ignored patterns
+            for scene in scenes_data.get("scenes", []):
+                room_name = next(
+                    (r.get("name", "") for r in self.rooms if r.get("id") == scene.get("roomId")),
+                    "",
+                )
+                
+                # Always set type to "Scene" regardless of the scene's type field
+                # This ensures shade scenes are treated as scenes, not shades
+                scene_info = {
+                    "id": scene.get("id"),
+                    "type": "Scene",
+                    "subType": "Scene",  # Always use "Scene" as subType
+                    "sceneType": scene.get("type", ""),  # Store original type as sceneType
+                    "name": f"{room_name} {scene.get('name', '')}",
+                    "roomId": scene.get("roomId"),
+                    "roomName": room_name,
+                    "level": 0,
+                    "status": scene.get("status", False),
+                    "position": 0,
+                    "connectionStatus": "n/a",  # Scenes don't have a physical connection status
+                    "ha_device_type": "scene",
+                }
+                
+                devices.append(scene_info)
+                _LOGGER.debug("Added scene: %s (ID: %s, Type: %s)", 
+                             scene_info["name"], scene_info["id"], scene_info["sceneType"])
             
             _LOGGER.info("Found %d devices matching enabled types", len(devices))
             return devices
@@ -382,33 +331,8 @@ class CrestronClient:
         response = await self._api_request("GET", "/sensors")
         sensors = response.get("sensors", [])
         
-        # If no ignored patterns, return all sensors
-        if not ignored_device_names:
-            return sensors
-        
-        # Filter out sensors that match ignored patterns
-        filtered_sensors = []
-        for sensor in sensors:
-            # Get room name for the sensor
-            room_name = ""
-            room_id = sensor.get("roomId")
-            if room_id:
-                room_name = next(
-                    (r.get("name", "") for r in self.rooms if r.get("id") == room_id),
-                    "",
-                )
-            
-            sensor_name = f"{room_name} {sensor.get('name', '')}".strip()
-            sensor_type = sensor.get("subType", "")
-            
-            # Check if sensor matches any ignored pattern
-            if not self._matches_ignored_pattern(sensor_name, sensor_type, ignored_device_names):
-                filtered_sensors.append(sensor)
-            else:
-                _LOGGER.debug("Skipped ignored sensor: %s (Type: %s)", 
-                             sensor_name, sensor_type)
-        
-        return filtered_sensors
+        # Return all sensors without filtering
+        return sensors
 
     async def get_sensor(self, sensor_id: int) -> Dict[str, Any]:
         """Get a specific sensor from the Crestron Home system."""
