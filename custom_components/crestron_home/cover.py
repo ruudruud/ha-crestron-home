@@ -51,7 +51,13 @@ async def async_setup_entry(
     covers = []
     
     for device in coordinator.data.get(DEVICE_TYPE_SHADE, []):
-        covers.append(CrestronHomeShade(coordinator, device))
+        cover = CrestronHomeShade(coordinator, device)
+        
+        # Set hidden_by if device is marked as hidden
+        if device.ha_hidden:
+            cover._attr_hidden_by = "integration"
+            
+        covers.append(cover)
     
     _LOGGER.debug("Adding %d cover entities", len(covers))
     async_add_entities(covers)

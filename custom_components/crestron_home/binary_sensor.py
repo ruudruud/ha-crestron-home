@@ -48,10 +48,19 @@ async def async_setup_entry(
     binary_sensors = []
     
     for device in coordinator.data.get(DEVICE_TYPE_BINARY_SENSOR, []):
+        # Create the appropriate binary sensor entity
         if device.subtype == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
-            binary_sensors.append(CrestronHomeOccupancySensor(coordinator, device))
+            sensor = CrestronHomeOccupancySensor(coordinator, device)
         elif device.subtype == DEVICE_SUBTYPE_DOOR_SENSOR:
-            binary_sensors.append(CrestronHomeDoorSensor(coordinator, device))
+            sensor = CrestronHomeDoorSensor(coordinator, device)
+        else:
+            continue  # Skip unknown sensor types
+            
+        # Set hidden_by if device is marked as hidden
+        if device.ha_hidden:
+            sensor._attr_hidden_by = "integration"
+            
+        binary_sensors.append(sensor)
     
     _LOGGER.debug("Adding %d binary sensor entities", len(binary_sensors))
     async_add_entities(binary_sensors)

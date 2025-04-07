@@ -44,7 +44,13 @@ async def async_setup_entry(
     scenes = []
     
     for device in coordinator.data.get(DEVICE_TYPE_SCENE, []):
-        scenes.append(CrestronHomeScene(coordinator, device))
+        scene = CrestronHomeScene(coordinator, device)
+        
+        # Set hidden_by if device is marked as hidden
+        if device.ha_hidden:
+            scene._attr_hidden_by = "integration"
+            
+        scenes.append(scene)
     
     _LOGGER.debug("Adding %d scene entities", len(scenes))
     async_add_entities(scenes)

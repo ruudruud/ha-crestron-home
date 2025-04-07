@@ -50,10 +50,17 @@ async def async_setup_entry(
     lights = []
     
     for device in coordinator.data.get(DEVICE_TYPE_LIGHT, []):
+        # Create the appropriate light entity
         if device.type == DEVICE_SUBTYPE_DIMMER:
-            lights.append(CrestronHomeDimmer(coordinator, device))
+            light = CrestronHomeDimmer(coordinator, device)
         else:
-            lights.append(CrestronHomeLight(coordinator, device))
+            light = CrestronHomeLight(coordinator, device)
+        
+        # Set hidden_by if device is marked as hidden
+        if device.ha_hidden:
+            light._attr_hidden_by = "integration"
+            
+        lights.append(light)
     
     _LOGGER.debug("Adding %d light entities", len(lights))
     async_add_entities(lights)

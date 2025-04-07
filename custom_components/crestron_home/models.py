@@ -21,6 +21,7 @@ class CrestronDevice:
     # Home Assistant specific fields
     ha_registry: bool = True
     ha_state: bool = True
+    ha_hidden: bool = False
     ha_reason: str = ""
     
     # Room information

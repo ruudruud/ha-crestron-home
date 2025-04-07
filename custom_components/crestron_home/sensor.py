@@ -52,7 +52,13 @@ async def async_setup_entry(
     
     for device in coordinator.data.get(DEVICE_TYPE_SENSOR, []):
         if device.subtype == DEVICE_SUBTYPE_PHOTO_SENSOR:
-            sensors.append(CrestronHomePhotoSensor(coordinator, device))
+            sensor = CrestronHomePhotoSensor(coordinator, device)
+            
+            # Set hidden_by if device is marked as hidden
+            if device.ha_hidden:
+                sensor._attr_hidden_by = "integration"
+                
+            sensors.append(sensor)
     
     _LOGGER.debug("Adding %d sensor entities", len(sensors))
     async_add_entities(sensors)
