@@ -53,6 +53,9 @@ class CrestronClient:
         self._ssl_context = ssl.create_default_context()
         self._ssl_context.check_hostname = False
         self._ssl_context.verify_mode = ssl.CERT_NONE
+        
+        # Add a lock for login to prevent multiple simultaneous login attempts
+        self._login_lock = asyncio.Lock()
 
     async def login(self) -> None:
         """Login to the Crestron Home system."""
@@ -62,45 +65,53 @@ class CrestronClient:
             _LOGGER.debug("Session is still valid, skipping login")
             return
 
-        _LOGGER.debug("Logging in to Crestron Home at %s", self.base_url)
-        
-        try:
-            # Use the pre-created SSL context
-            # Make login request
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl_context)) as session:
-                headers = {
-                    "Accept": "application/json",
-                    "Crestron-RestAPI-AuthToken": self.api_token,
-                }
+        # Use the lock to prevent multiple simultaneous login attempts
+        async with self._login_lock:
+            # Check again after acquiring the lock in case another task has already logged in
+            current_time = time.time()
+            if self.auth_key and (current_time - self.last_login) < CRESTRON_SESSION_TIMEOUT:
+                _LOGGER.debug("Session is still valid, skipping login (after lock)")
+                return
                 
-                async with session.get(
-                    f"{self.base_url}/login",
-                    headers=headers,
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            _LOGGER.debug("Logging in to Crestron Home at %s", self.base_url)
+            
+            try:
+                # Use the pre-created SSL context
+                # Make login request
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl_context)) as session:
+                    headers = {
+                        "Accept": "application/json",
+                        "Crestron-RestAPI-AuthToken": self.api_token,
+                    }
                     
-                    self.auth_key = data.get("authkey")
-                    if not self.auth_key:
-                        raise CrestronAuthError("No authentication key received")
-                    
-                    self.last_login = current_time
-                    _LOGGER.info(
-                        "Successfully authenticated with Crestron Home, version: %s",
-                        data.get("version", "unknown"),
-                    )
-        
-        except ClientConnectorError as error:
-            _LOGGER.error("Connection error: %s", error)
-            raise CrestronConnectionError(f"Connection error: {error}") from error
-        
-        except ClientResponseError as error:
-            _LOGGER.error("Authentication error: %s", error)
-            raise CrestronAuthError(f"Authentication error: {error}") from error
-        
-        except Exception as error:
-            _LOGGER.error("Unexpected error during login: %s", error)
-            raise CrestronApiError(f"Unexpected error: {error}") from error
+                    async with session.get(
+                        f"{self.base_url}/login",
+                        headers=headers,
+                    ) as response:
+                        response.raise_for_status()
+                        data = await response.json()
+                        
+                        self.auth_key = data.get("authkey")
+                        if not self.auth_key:
+                            raise CrestronAuthError("No authentication key received")
+                        
+                        self.last_login = current_time
+                        _LOGGER.info(
+                            "Successfully authenticated with Crestron Home, version: %s",
+                            data.get("version", "unknown"),
+                        )
+            
+            except ClientConnectorError as error:
+                _LOGGER.error("Connection error: %s", error)
+                raise CrestronConnectionError(f"Connection error: {error}") from error
+            
+            except ClientResponseError as error:
+                _LOGGER.error("Authentication error: %s", error)
+                raise CrestronAuthError(f"Authentication error: {error}") from error
+            
+            except Exception as error:
+                _LOGGER.error("Unexpected error during login: %s", error)
+                raise CrestronApiError(f"Unexpected error: {error}") from error
 
     async def _api_request(
         self, method: str, endpoint: str, data: Optional[Dict[str, Any]] = None
