@@ -33,12 +33,19 @@ class CrestronDeviceManager:
         """Update Home Assistant parameters based on device status.
         
         Logic:
-        - All devices are registered in Home Assistant (ha_registry = True)
-        - If device is functioning normally: state = available
-        - If device is offline: state = unavailable
+        - If device is functioning normally: state = available, registry = enabled
+        - If device is offline: state = unavailable, registry = enabled
+        - If device is disabled via config filter: registry = disabled, state = N/A
         """
         
-        # Always register the device in Home Assistant
+        # Check if device matches an ignored pattern
+        if self._matches_ignored_pattern(device.full_name, device.type):
+            device.ha_registry = False
+            device.ha_state = None  # N/A
+            device.ha_reason = "Device filtered by config"
+            return
+        
+        # Device is enabled in registry
         device.ha_registry = True
         
         # Check connection status for availability
@@ -160,7 +167,7 @@ class CrestronDeviceManager:
             
             for device in self.devices.values():
                 ha_device_type = self._get_ha_device_type(device.type, device.subtype)
-                if ha_device_type and ha_device_type in devices_by_type:
+                if ha_device_type and ha_device_type in devices_by_type and device.ha_registry:
                     devices_by_type[ha_device_type].append(device)
             
             # Log device counts by type
@@ -359,6 +366,7 @@ class CrestronDeviceManager:
         return [
             device for device in self.devices.values()
             if self._get_ha_device_type(device.type, device.subtype) == device_type
+            and device.ha_registry  # Only include devices with ha_registry = True
         ]
 
     def get_devices_by_room(self, room_id: int) -> List[CrestronDevice]:
