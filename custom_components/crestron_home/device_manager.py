@@ -224,8 +224,8 @@ class CrestronDeviceManager:
                 )
                 
                 # Set Home Assistant visibility
-                device.ha_enabled = True
-                device.ha_unavailable = True
+                device.ha_registry = True
+                device.ha_state = True
                 device.ha_reason = ""
                 
                 # Add to devices dictionary
@@ -318,8 +318,8 @@ class CrestronDeviceManager:
                     sensor.level = sensor_data.get("level", 0)
                 
                 # Set Home Assistant visibility
-                sensor.ha_enabled = True
-                sensor.ha_unavailable = True
+                sensor.ha_registry = True
+                sensor.ha_state = True
                 sensor.ha_reason = ""
                 
                 # Add to devices dictionary
@@ -396,8 +396,8 @@ class CrestronDeviceManager:
                 _LOGGER.info("  Status: %s / Level: %d", "ON" if device.status else "OFF", device.level)
                 _LOGGER.info("  Connection: %s / Last Updated: %s", 
                             device.connection, device.last_updated.isoformat())
-                _LOGGER.info("  Unavailable in HA: %s / Enabled in HA: %s / Reason: %s",
-                            device.ha_unavailable, device.ha_enabled, device.ha_reason or "None")
+                _LOGGER.info("  Availability reason: %s / HA State: %s / HA Registry: %s",
+                            device.ha_reason or "None", device.ha_state, device.ha_registry)
                 
                 # Log device-specific properties
                 if device.type == "Shade" or device.subtype == "Shade":
@@ -442,8 +442,8 @@ class CrestronDeviceManager:
                 "level": device.level,
                 "connection": device.connection,
                 "last_updated": device.last_updated.isoformat(),
-                "ha_enabled": device.ha_enabled,
-                "ha_unavailable": device.ha_unavailable,
+                "ha_registry": device.ha_registry,
+                "ha_state": device.ha_state,
                 "ha_reason": device.ha_reason,
             }
             
