@@ -33,10 +33,10 @@ class CrestronDeviceManager:
         """Update Home Assistant parameters based on device status.
         
         Logic:
-        - If device is functioning normally: state = available, registry = enabled
-        - If device is offline: state = unavailable, registry = enabled
-        - If device matches an ignored pattern: registry = enabled, hidden = true, state = N/A
-        - If device type is disabled in config: registry = enabled, hidden = true, state = N/A
+        - If device is functioning normally: state = available
+        - If device is offline: state = unavailable
+        - If device matches an ignored pattern: hidden = true, state = N/A
+        - If device type is disabled in config: hidden = true, state = N/A
         """
         
         # Get the Home Assistant device type
@@ -44,22 +44,19 @@ class CrestronDeviceManager:
         
         # Check if device matches an ignored pattern
         if self._matches_ignored_pattern(device.full_name, device.type):
-            device.ha_registry = True  # Keep in registry
-            device.ha_hidden = True    # But mark as hidden
+            device.ha_hidden = True    # Mark as hidden
             device.ha_state = None     # N/A
             device.ha_reason = "Device hidden by name filter"
             return
         
         # Check if device type is disabled in config
         if ha_device_type and ha_device_type not in self.enabled_device_types:
-            device.ha_registry = True  # Keep in registry
-            device.ha_hidden = True    # But mark as hidden
+            device.ha_hidden = True    # Mark as hidden
             device.ha_state = None     # N/A
             device.ha_reason = "Device hidden by category filter"
             return
         
-        # Device is enabled in registry and not hidden
-        device.ha_registry = True
+        # Device is not hidden
         device.ha_hidden = False
         
         # Check connection status for availability
@@ -431,8 +428,8 @@ class CrestronDeviceManager:
                 _LOGGER.info("  Status: %s / Level: %d", "ON" if device.status else "OFF", device.level)
                 _LOGGER.info("  Connection: %s / Last Updated: %s", 
                             device.connection, device.last_updated.isoformat())
-                _LOGGER.info("  Availability reason: %s / HA State: %s / HA Registry: %s / HA Hidden: %s",
-                            device.ha_reason or "None", device.ha_state, device.ha_registry, device.ha_hidden)
+                _LOGGER.info("  Availability reason: %s / HA State: %s / HA Hidden: %s",
+                            device.ha_reason or "None", device.ha_state, device.ha_hidden)
                 
                 # Log device-specific properties
                 if device.type == "Shade" or device.subtype == "Shade":
@@ -477,7 +474,6 @@ class CrestronDeviceManager:
                 "level": device.level,
                 "connection": device.connection,
                 "last_updated": device.last_updated.isoformat(),
-                "ha_registry": device.ha_registry,
                 "ha_state": device.ha_state,
                 "ha_hidden": device.ha_hidden,
                 "ha_reason": device.ha_reason,
