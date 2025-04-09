@@ -138,7 +138,11 @@ class CrestronDeviceManager:
     async def poll_devices(self) -> Dict[str, List[CrestronDevice]]:
         """Poll devices from the Crestron Home system and update the device snapshot."""
         try:
-            _LOGGER.debug("Polling devices with enabled types: %s", self.enabled_device_types)
+            _LOGGER.debug(
+                "Polling devices with enabled types: %s, ignored names: %s",
+                self.enabled_device_types,
+                self.ignored_device_names
+            )
             
             # Store previous devices for future change detection
             self.previous_devices = deepcopy(self.devices)

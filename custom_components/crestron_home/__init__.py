@@ -55,7 +55,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create API client
     client = CrestronClient(hass, host, token)
 
-    # Create coordinator
+    # Create coordinator with current configuration values
+    _LOGGER.debug(
+        "Creating coordinator with update_interval=%s, enabled_types=%s, ignored_names=%s",
+        update_interval, enabled_device_types, ignored_device_names
+    )
+    
     coordinator = CrestronHomeDataUpdateCoordinator(
         hass, client, update_interval, enabled_device_types, ignored_device_names
     )
@@ -179,13 +184,15 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         return
     
     new_enabled_types = set(entry.options.get(CONF_ENABLED_DEVICE_TYPES, old_enabled_types))
+    new_update_interval = entry.options.get(CONF_UPDATE_INTERVAL, entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
+    new_ignored_device_names = entry.options.get(CONF_IGNORED_DEVICE_NAMES, entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES))
     
     # Find disabled device types
     disabled_types = [t for t in old_enabled_types if t not in new_enabled_types]
     
     _LOGGER.debug(
-        "Reloading entry. Old types: %s, New types: %s, Disabled: %s",
-        old_enabled_types, new_enabled_types, disabled_types
+        "Reloading entry. Update interval: %s, New types: %s, Ignored names: %s, Disabled: %s",
+        new_update_interval, new_enabled_types, new_ignored_device_names, disabled_types
     )
     
     # Clean up entities for disabled device types
@@ -198,21 +205,16 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             entry, data={**entry.data, **entry.options}
         )
     
-    # Update coordinator's settings if it exists
-    if entry.entry_id in hass.data.get(DOMAIN, {}):
-        coordinator = hass.data[DOMAIN][entry.entry_id]
+    # Perform a complete unload
+    if await async_unload_entry(hass, entry):
+        _LOGGER.debug("Successfully unloaded entry")
+    else:
+        _LOGGER.warning("Failed to unload entry completely")
         
-        # Update enabled device types
-        if hasattr(coordinator, "enabled_device_types"):
-            _LOGGER.debug("Updating coordinator's enabled device types to: %s", new_enabled_types)
-            coordinator.enabled_device_types = list(new_enabled_types)
-        
-        # Update ignored device names
-        if hasattr(coordinator, "ignored_device_names"):
-            new_ignored_device_names = entry.options.get(CONF_IGNORED_DEVICE_NAMES, coordinator.ignored_device_names)
-            _LOGGER.debug("Updating coordinator's ignored device names to: %s", new_ignored_device_names)
-            coordinator.ignored_device_names = new_ignored_device_names
+        # Force cleanup if unload wasn't successful
+        if entry.entry_id in hass.data.get(DOMAIN, {}):
+            _LOGGER.debug("Forcing cleanup of entry data")
+            hass.data[DOMAIN].pop(entry.entry_id, None)
     
-    # Reload entry
-    await async_unload_entry(hass, entry)
+    # Set up the entry again with the updated configuration
     await async_setup_entry(hass, entry)

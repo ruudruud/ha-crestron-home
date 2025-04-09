@@ -49,7 +49,12 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> Dict[str, Any]:
         """Update data via device manager."""
         try:
-            _LOGGER.debug("Updating data with enabled device types: %s", self.enabled_device_types)
+            _LOGGER.debug(
+                "Updating data with interval=%s seconds, enabled_types=%s, ignored_names=%s",
+                self.update_interval.total_seconds(),
+                self.enabled_device_types,
+                self.ignored_device_names
+            )
             
             # Poll devices using the device manager
             devices_by_type = await self.device_manager.poll_devices()

@@ -16,6 +16,11 @@
 - Improved error handling and logging
 - Enhanced documentation with technical details about the abstraction layer
 
+### Bug Fixes
+
+- Fixed issue where configuration options weren't properly applied after initial setup
+- Added enhanced logging to track configuration changes during reload process
+
 ## 0.1.5 (2025-05-04)
 
 ### Bug Fixes
