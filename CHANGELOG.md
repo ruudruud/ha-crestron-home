@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 (2025-10-04)
+
+### Bug Fixes
+
+- Fixed issue where platforms were being set up multiple times, causing errors during integration reload
+- Improved reload process to ensure platforms are properly unloaded before being set up again
+- Fixed redundant enabled device types retrieval in setup process
+
 ## 0.2.0 (2025-07-04)
 
 ### Features

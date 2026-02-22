@@ -85,7 +85,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     # Set up only enabled platforms
-    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
     enabled_platforms = []
     
     # Map device types to platforms
@@ -199,14 +198,10 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if disabled_types:
         await _async_clean_entity_registry(hass, entry, disabled_types)
     
-    # Update entry data with new options
-    if entry.options:
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, **entry.options}
-        )
+    # Perform a complete unload with the original data
+    unload_ok = await async_unload_entry(hass, entry)
     
-    # Perform a complete unload
-    if await async_unload_entry(hass, entry):
+    if unload_ok:
         _LOGGER.debug("Successfully unloaded entry")
     else:
         _LOGGER.warning("Failed to unload entry completely")
@@ -215,6 +210,12 @@ async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
         if entry.entry_id in hass.data.get(DOMAIN, {}):
             _LOGGER.debug("Forcing cleanup of entry data")
             hass.data[DOMAIN].pop(entry.entry_id, None)
+    
+    # Update entry data with new options after unloading
+    if entry.options:
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, **entry.options}
+        )
     
     # Set up the entry again with the updated configuration
     await async_setup_entry(hass, entry)
