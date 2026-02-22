@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.2 (2026-02-22)
+
+### Bug Fixes
+
+- Fixed login response field casing (`AuthKey` instead of `authkey`) with backwards-compatible fallback
+- Fixed endpoint path casing to match API docs (`/lights/SetState`, `/shades/SetState`)
+- Added HTTP 511 status code handling for session expiration (previously only 401 was handled)
+- Fixed brightness conversion precision loss by using direct 0-65535 to 0-255 mapping
+- Preserved original `type` and `subType` fields separately from device API responses
+
+### Improvements
+
+- Added response status checking for light, shade, and scene POST commands (failure/partial handling)
+- Rewrote all API reference documentation from the official Crestron source
+
 ## 0.2.1 (2025-10-04)
 
 ### Bug Fixes

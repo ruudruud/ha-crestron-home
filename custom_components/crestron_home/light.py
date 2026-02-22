@@ -20,6 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import CrestronClient
 from .const import (
     CONF_ENABLED_DEVICE_TYPES,
+    CRESTRON_MAX_LEVEL,
     DEVICE_SUBTYPE_DIMMER,
     DEVICE_TYPE_LIGHT,
     DOMAIN,
@@ -195,17 +196,16 @@ class CrestronHomeDimmer(CrestronHomeBaseLight):
         # Find the device in the coordinator data
         for device in self.coordinator.data.get(DEVICE_TYPE_LIGHT, []):
             if device.id == self._device.id:
-                return int(CrestronClient.crestron_to_percentage(device.level) * 255 / 100)
+                return round(device.level * 255 / CRESTRON_MAX_LEVEL)
         
         # If device not found, use the stored state
-        return int(CrestronClient.crestron_to_percentage(self._device.level) * 255 / 100)
+        return round(self._device.level * 255 / CRESTRON_MAX_LEVEL)
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
         if ATTR_BRIGHTNESS in kwargs:
             # Convert Home Assistant brightness (0-255) to Crestron level (0-65535)
-            brightness_pct = kwargs[ATTR_BRIGHTNESS] / 255 * 100
-            level = CrestronClient.percentage_to_crestron(brightness_pct)
+            level = round(kwargs[ATTR_BRIGHTNESS] * CRESTRON_MAX_LEVEL / 255)
         else:
             # Default to full brightness if not specified
             level = CrestronClient.percentage_to_crestron(100)

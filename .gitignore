@@ -42,5 +42,5 @@ home-assistant_v2.db
 # Environment variables
 .env
 
-# Crestron Home API Docs
-/docs/
+# Claude Code
+.claude/

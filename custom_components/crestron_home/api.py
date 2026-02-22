@@ -100,7 +100,7 @@ class CrestronClient:
                         response.raise_for_status()
                         data = await response.json()
                         
-                        self.auth_key = data.get("authkey")
+                        self.auth_key = data.get("AuthKey") or data.get("authkey")
                         if not self.auth_key:
                             raise CrestronAuthError("No authentication key received")
                         
@@ -144,7 +144,7 @@ class CrestronClient:
                 return await response.json()
         
         except ClientResponseError as error:
-            if error.status == 401:
+            if error.status in (401, 511):
                 # Force re-authentication on next request
                 self.auth_key = None
                 self.last_login = 0
@@ -220,8 +220,8 @@ class CrestronClient:
                 
                 device_info = {
                     "id": device.get("id"),
-                    "type": device_type,
-                    "subType": device_type,
+                    "type": device.get("type", ""),
+                    "subType": device.get("subType") or device.get("type", ""),
                     "name": f"{room_name} {device.get('name', '')}",
                     "roomId": device.get("roomId"),
                     "roomName": room_name,
@@ -293,8 +293,19 @@ class CrestronClient:
                 }
             ]
         }
-        
-        await self._api_request("POST", "/lights/setstate", light_state)
+
+        response = await self._api_request("POST", "/lights/SetState", light_state)
+        status = response.get("status", "")
+        if status == "failure":
+            raise CrestronApiError(
+                f"Failed to set light state: {response.get('errorMessage', 'Unknown error')}"
+            )
+        if status == "partial":
+            _LOGGER.warning(
+                "Partial light state update: %s (failed devices: %s)",
+                response.get("errorMessage", ""),
+                response.get("errorDevices", []),
+            )
 
     async def set_shade_position(self, shade_id: int, position: int) -> None:
         """Set the position of a shade."""
@@ -306,12 +317,28 @@ class CrestronClient:
                 }
             ]
         }
-        
-        await self._api_request("POST", "/shades/setstate", shade_state)
+
+        response = await self._api_request("POST", "/shades/SetState", shade_state)
+        status = response.get("status", "")
+        if status == "failure":
+            raise CrestronApiError(
+                f"Failed to set shade position: {response.get('errorMessage', 'Unknown error')}"
+            )
+        if status == "partial":
+            _LOGGER.warning(
+                "Partial shade position update: %s (failed devices: %s)",
+                response.get("errorMessage", ""),
+                response.get("errorDevices", []),
+            )
 
     async def execute_scene(self, scene_id: int) -> None:
         """Execute a scene."""
-        await self._api_request("POST", f"/scenes/recall/{scene_id}", {})
+        response = await self._api_request("POST", f"/scenes/recall/{scene_id}", {})
+        status = response.get("status", "")
+        if status == "failure":
+            raise CrestronApiError(
+                f"Failed to execute scene: {response.get('errorMessage', 'Unknown error')}"
+            )
 
     async def get_scene(self, scene_id: int) -> Dict[str, Any]:
         """Get a specific scene from the Crestron Home system."""
