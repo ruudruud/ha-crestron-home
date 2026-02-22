@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3 (2026-02-23)
+
+### Bug Fixes
+
+- Fixed light levels always reading as 0 by fetching state from `GET /lights` instead of relying on `GET /devices` (which doesn't return `level`)
+- Fixed shade `connectionStatus` to read from `GET /shades` response instead of `GET /devices`
+- Fixed device and scene name double-prefixing (room name was prepended in both `api.py` and `models.py`)
+
 ## 0.2.2 (2026-02-22)
 
 ### Bug Fixes

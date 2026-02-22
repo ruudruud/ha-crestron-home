@@ -170,71 +170,91 @@ class CrestronClient:
         _LOGGER.debug("Using ignored device name patterns: %s", ignored_device_names)
         
         try:
-            # Get rooms, scenes, devices, and shades in parallel
+            # Get rooms, scenes, devices, lights, and shades in parallel
             results = await asyncio.gather(
                 self._api_request("GET", "/rooms"),
                 self._api_request("GET", "/scenes"),
                 self._api_request("GET", "/devices"),
+                self._api_request("GET", "/lights"),
                 self._api_request("GET", "/shades"),
             )
-            
+
             rooms_data = results[0]
             scenes_data = results[1]
             devices_data = results[2]
-            shades_data = results[3]
-            
+            lights_data = results[3]
+            shades_data = results[4]
+
             # Store rooms for later use
             self.rooms = rooms_data.get("rooms", [])
-            
-            _LOGGER.debug("Found %d rooms, %d scenes, %d devices, %d shades", 
-                         len(self.rooms), 
+
+            _LOGGER.debug("Found %d rooms, %d scenes, %d devices, %d lights, %d shades",
+                         len(self.rooms),
                          len(scenes_data.get("scenes", [])),
                          len(devices_data.get("devices", [])),
+                         len(lights_data.get("lights", [])),
                          len(shades_data.get("shades", [])))
             
             devices: List[Dict[str, Any]] = []
             
+            # Build lookup maps for lights and shades data
+            lights_by_id = {
+                light.get("id"): light
+                for light in lights_data.get("lights", [])
+            }
+            shades_by_id = {
+                shade.get("id"): shade
+                for shade in shades_data.get("shades", [])
+            }
+
             # Process regular devices
             for device in devices_data.get("devices", []):
                 room_name = next(
                     (r.get("name", "") for r in self.rooms if r.get("id") == device.get("roomId")),
                     "",
                 )
-                
+
+                device_id = device.get("id")
                 device_type = device.get("subType") or device.get("type", "")
+                level = 0
                 shade_position = 0
-                
-                if device_type == "Shade":
-                    # Find matching shade position
-                    for shade in shades_data.get("shades", []):
-                        if shade.get("id") == device.get("id"):
-                            shade_position = shade.get("position", 0)
-                            break
-                
+                connection_status = "online"
+
+                if device_type in ("Dimmer", "Switch"):
+                    # Merge level and connectionStatus from /lights endpoint
+                    light = lights_by_id.get(device_id, {})
+                    level = light.get("level", 0)
+                    connection_status = light.get("connectionStatus", "online")
+                elif device_type == "Shade":
+                    # Merge position and connectionStatus from /shades endpoint
+                    shade = shades_by_id.get(device_id, {})
+                    shade_position = shade.get("position", 0)
+                    connection_status = shade.get("connectionStatus", "online")
+
                 # Map Crestron device types to Home Assistant device types
                 ha_device_type = None
-                if device_type == "Dimmer" or device_type == "Switch":
+                if device_type in ("Dimmer", "Switch"):
                     ha_device_type = "light"
                 elif device_type == "Shade":
                     ha_device_type = "shade"
-                
+
                 device_info = {
-                    "id": device.get("id"),
+                    "id": device_id,
                     "type": device.get("type", ""),
                     "subType": device.get("subType") or device.get("type", ""),
-                    "name": f"{room_name} {device.get('name', '')}",
+                    "name": device.get("name", ""),
                     "roomId": device.get("roomId"),
                     "roomName": room_name,
-                    "level": device.get("level", 0),
+                    "level": level,
                     "status": device.get("status", False),
                     "position": shade_position,
-                    "connectionStatus": device.get("connectionStatus", "online"),
+                    "connectionStatus": connection_status,
                     "ha_device_type": ha_device_type,
                 }
-                
+
                 # Add all devices regardless of type or ignored pattern
                 devices.append(device_info)
-                _LOGGER.debug("Added %s device: %s (ID: %s)", 
+                _LOGGER.debug("Added %s device: %s (ID: %s)",
                              ha_device_type or "unknown", device_info["name"], device_info["id"])
             
             # Process scenes - add all scenes regardless of enabled_types or ignored patterns
@@ -251,7 +271,7 @@ class CrestronClient:
                     "type": "Scene",
                     "subType": "Scene",  # Always use "Scene" as subType
                     "sceneType": scene.get("type", ""),  # Store original type as sceneType
-                    "name": f"{room_name} {scene.get('name', '')}",
+                    "name": scene.get("name", ""),
                     "roomId": scene.get("roomId"),
                     "roomName": room_name,
                     "level": 0,
