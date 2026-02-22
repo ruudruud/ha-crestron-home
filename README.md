@@ -8,7 +8,7 @@ This repository contains a custom component for Home Assistant that integrates w
 
 ## Overview
 
-The integration communicates with the Crestron Home CWS (Crestron Web Service) server via HTTP to discover and control devices in your Crestron Home system.
+The integration communicates with the Crestron Home CWS (Crestron Web Service) server via HTTPS to discover and control devices in your Crestron Home system.
 
 ## Features
 
@@ -62,14 +62,15 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 ![Crestron Home Integration](https://raw.githubusercontent.com/ruudruud/ha-crestron-home/main/images/web-api-settings.png)
 
 1. Open the Crestron Home Setup app
-2. Go to Settings > System Settings > Web API
-3. Enable the Web API
-4. Generate a new API token
-5. Copy the token for use in the integration setup
+2. Go to Settings (called Installer Settings)
+3. Tap System Control Options
+4. Tap Web API Settings
+5. Enable the Web API and generate a new API token
+6. Copy the token for use in the integration setup
 
 ### Setting up the Integration
 
-1. Go to Home Assistant > Settings > Devices & Services
+1. Go to Home Assistant > Settings > Devices & services
 2. Click "Add Integration"
 3. Search for "Crestron Home"
 4. Enter the following information:
@@ -84,13 +85,14 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
      - Scenes: All scenes defined in your Crestron Home system
      - Binary Sensors: Occupancy sensors and door sensors
      - Sensors: Photosensors and other measurement devices
+   - **Ignored Device Names** (optional): Device name patterns to exclude
+     - Use `%` as wildcard (e.g., `%bathroom%` ignores all devices with "bathroom" in the name)
 5. Click "Submit"
 6. Please allow for some time for the device synchronization.
 
 ## Requirements
 
 - **Home Assistant Core**: Version 2024.2 or newer
-- **Python**: Version 3.11 or newer
 - **Dependencies**: aiohttp 3.8.0 or newer (for API communication)
 - **Hardware Requirements**:
   - A Crestron Home system with CWS (Crestron Web Service) enabled
@@ -108,35 +110,28 @@ This integration:
 - Includes an abstraction layer that maintains a consistent snapshot of all devices
 - Handles device state normalization and visibility logic
 
-### Abstraction Layer
+### How It Works
 
-The integration includes an intermediate abstraction layer that sits between the Crestron Home API and Home Assistant. This layer:
-
-- Polls devices at a fixed interval configured by the user
-- Maintains a consistent snapshot of all devices in the system
-- Normalizes device states across different device types
-- Handles visibility and enabled logic for Home Assistant
-- Provides a clean interface for debugging and troubleshooting
+The integration polls your Crestron Home system at the configured interval to keep device states in sync. Between polls, it maintains a local snapshot of all devices so that Home Assistant always has up-to-date state information. Devices marked as hidden in the configuration are automatically hidden in Home Assistant as well.
 
 ### Debug Script
 
-The integration includes a debug script (`crestron_debug.py`) that can be used to test the abstraction layer and view the device snapshot. This is useful for troubleshooting issues with the integration.
-
-To use the debug script:
+The integration includes a standalone debug script (`crestron_debug.py`) that connects directly to your Crestron Home system and displays device information in formatted tables. This is useful for troubleshooting without involving Home Assistant.
 
 ```bash
-python3 crestron_debug.py --host <crestron_host> --token <api_token> [--types light,shade,scene] [--ignore pattern1,pattern2] [--output snapshot.json] [--verbose]
+python3 crestron_debug.py --host <crestron_host> --token <api_token>
 ```
 
 Options:
-- `--host`: The IP address or hostname of your Crestron Home processor (required)
-- `--token`: The API token for your Crestron Home system (required)
-- `--types`: Comma-separated list of device types to include (default: all types)
-- `--ignore`: Comma-separated list of device name patterns to ignore
-- `--output`: Output file for the device snapshot (default: crestron_snapshot.json)
-- `--verbose`: Enable verbose logging
+- `--host`: IP address or hostname of the Crestron Home system
+- `--token`: API token for authentication
+- `--room`: Filter devices by room name
+- `--sort`: Sort by `name`, `room`, `status`, or `level` (default: `room`)
+- `--lights`: Show only lights (dimmers and switches)
+- `--sensors`: Show only sensors (occupancy, door, photo)
+- `--raw`: Show raw API data instead of formatted tables
 
-The script will connect to your Crestron Home system, poll all devices, and save a snapshot of the device state to a JSON file. This can be useful for debugging issues with the integration.
+Host and token can also be set via a `.env` file to avoid passing them on every run.
 
 ## Troubleshooting
 
@@ -151,7 +146,7 @@ The script will connect to your Crestron Home system, poll all devices, and save
 
 - Make sure the device types you want to control are selected in the integration configuration
 - Verify that the devices are properly configured in your Crestron Home system
-- Try increasing the update interval to ensure all devices are discovered
+- Try reloading the integration to re-discover devices
 
 ### Device Type Configuration
 
@@ -170,6 +165,10 @@ Contributions are welcome! Please see the [Contributing Guidelines](CONTRIBUTING
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## API Documentation
+
+Detailed Crestron Home REST API documentation is available in the [docs](docs/) directory.
 
 ## Changelog
 
