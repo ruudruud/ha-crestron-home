@@ -150,10 +150,6 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle Crestron Home options."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(
         self, user_input: Optional[Dict[str, Any]] = None
     ) -> FlowResult:
