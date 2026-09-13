@@ -92,7 +92,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 
 ## Requirements
 
-- **Home Assistant Core**: Version 2024.2 or newer
+- **Home Assistant Core**: Version 2024.12 or newer
 - **Dependencies**: aiohttp 3.8.0 or newer (for API communication)
 - **Hardware Requirements**:
   - A Crestron Home system with CWS (Crestron Web Service) enabled
