@@ -41,11 +41,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data.setdefault(DOMAIN, {})
         _LOGGER.info(STARTUP_MESSAGE)
 
+    settings = {**entry.data, **entry.options}
     host = entry.data.get(CONF_HOST)
     token = entry.data.get(CONF_TOKEN)
-    update_interval = entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
-    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
-    ignored_device_names = entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
+    update_interval = settings.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL)
+    enabled_device_types = settings.get(CONF_ENABLED_DEVICE_TYPES, [])
+    ignored_device_names = settings.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
     
     _LOGGER.debug("Ignored device name patterns: %s", ignored_device_names)
 
@@ -59,7 +60,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     
     coordinator = CrestronHomeDataUpdateCoordinator(
-        hass, client, update_interval, enabled_device_types, ignored_device_names
+        hass, client, update_interval, enabled_device_types, ignored_device_names,
+        config_entry=entry,
     )
 
     # Fetch initial data
@@ -82,6 +84,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     coordinator.controller_device_id = controller.id
+
+    await _async_clean_entity_registry(
+        hass, entry,
+        [kind for kind in (DEVICE_TYPE_LIGHT, DEVICE_TYPE_SHADE, DEVICE_TYPE_SCENE,
+                          DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_SENSOR)
+         if kind not in enabled_device_types],
+    )
 
     # Set up only enabled platforms
     enabled_platforms = []
@@ -109,8 +118,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Get enabled platforms
-    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    # Options already contain the new selection; unload the platforms actually running.
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+    enabled_device_types = coordinator.enabled_device_types
     enabled_platforms = []
     
     # Map device types to platforms
@@ -167,51 +177,5 @@ async def _async_clean_entity_registry(
 
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    # Get old and new enabled device types
-    old_enabled_types = set(entry.data.get(CONF_ENABLED_DEVICE_TYPES, []))
-    
-    # If entry.options is empty, it means this is the first reload after setup
-    # In this case, there's nothing to compare
-    if not entry.options:
-        await async_unload_entry(hass, entry)
-        await async_setup_entry(hass, entry)
-        return
-    
-    new_enabled_types = set(entry.options.get(CONF_ENABLED_DEVICE_TYPES, old_enabled_types))
-    new_update_interval = entry.options.get(CONF_UPDATE_INTERVAL, entry.data.get(CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL))
-    new_ignored_device_names = entry.options.get(CONF_IGNORED_DEVICE_NAMES, entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES))
-    
-    # Find disabled device types
-    disabled_types = [t for t in old_enabled_types if t not in new_enabled_types]
-    
-    _LOGGER.debug(
-        "Reloading entry. Update interval: %s, New types: %s, Ignored names: %s, Disabled: %s",
-        new_update_interval, new_enabled_types, new_ignored_device_names, disabled_types
-    )
-    
-    # Clean up entities for disabled device types
-    if disabled_types:
-        await _async_clean_entity_registry(hass, entry, disabled_types)
-    
-    # Perform a complete unload with the original data
-    unload_ok = await async_unload_entry(hass, entry)
-    
-    if unload_ok:
-        _LOGGER.debug("Successfully unloaded entry")
-    else:
-        _LOGGER.warning("Failed to unload entry completely")
-        
-        # Force cleanup if unload wasn't successful
-        if entry.entry_id in hass.data.get(DOMAIN, {}):
-            _LOGGER.debug("Forcing cleanup of entry data")
-            hass.data[DOMAIN].pop(entry.entry_id, None)
-    
-    # Update entry data with new options after unloading
-    if entry.options:
-        hass.config_entries.async_update_entry(
-            entry, data={**entry.data, **entry.options}
-        )
-    
-    # Set up the entry again with the updated configuration
-    await async_setup_entry(hass, entry)
+    """Let Home Assistant manage the config entry lifecycle."""
+    await hass.config_entries.async_reload(entry.entry_id)

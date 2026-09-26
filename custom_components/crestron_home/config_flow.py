@@ -165,8 +165,6 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                 )
                 await client.login()
                 
-                # Return the options to be stored in entry.options
-                # The async_reload_entry function will handle merging these with the data
                 return self.async_create_entry(title="", data=user_input)
             
             except CrestronConnectionError:
@@ -177,11 +175,11 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
 
-        # Get current values from config entry
-        current_update_interval = self.config_entry.data.get(
+        settings = {**self.config_entry.data, **self.config_entry.options}
+        current_update_interval = settings.get(
             CONF_UPDATE_INTERVAL, DEFAULT_UPDATE_INTERVAL
         )
-        current_enabled_types = self.config_entry.data.get(
+        current_enabled_types = settings.get(
             CONF_ENABLED_DEVICE_TYPES, [DEVICE_TYPE_LIGHT, DEVICE_TYPE_SHADE, DEVICE_TYPE_SCENE, DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_SENSOR]
         )
 
@@ -215,7 +213,7 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                     ),
                     vol.Optional(
                         CONF_IGNORED_DEVICE_NAMES, 
-                        default=self.config_entry.data.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
+                        default=settings.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             multiple=True,

@@ -18,7 +18,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    CONF_ENABLED_DEVICE_TYPES,
     DEVICE_SUBTYPE_PHOTO_SENSOR,
     DEVICE_TYPE_SENSOR,
     DOMAIN,
@@ -41,7 +40,7 @@ async def async_setup_entry(
     coordinator: CrestronHomeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     
     # Check if sensor platform is enabled
-    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    enabled_device_types = coordinator.enabled_device_types
     if DEVICE_TYPE_SENSOR not in enabled_device_types:
         _LOGGER.debug("Sensor platform not enabled, skipping setup")
         return

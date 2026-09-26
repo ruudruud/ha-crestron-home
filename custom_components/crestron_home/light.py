@@ -17,7 +17,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import CrestronClient
 from .const import (
-    CONF_ENABLED_DEVICE_TYPES,
     CRESTRON_MAX_LEVEL,
     DEVICE_SUBTYPE_DIMMER,
     DEVICE_TYPE_LIGHT,
@@ -41,7 +40,7 @@ async def async_setup_entry(
     coordinator: CrestronHomeDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
     
     # Check if light platform is enabled
-    enabled_device_types = entry.data.get(CONF_ENABLED_DEVICE_TYPES, [])
+    enabled_device_types = coordinator.enabled_device_types
     if DEVICE_TYPE_LIGHT not in enabled_device_types:
         _LOGGER.debug("Light platform not enabled, skipping setup")
         return
