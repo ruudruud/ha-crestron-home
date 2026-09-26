@@ -35,7 +35,7 @@ Additional component-specific JSON fields are described in [JSON Payload Fields]
 
 ## Dynamic Resources
 
-All devices in Crestron Home can be accessed using the `/api/devices` base call. For more information, refer to [Devices API](../api-reference/devices.md).
+All devices in Crestron Home can be accessed using the `/api/devices` base call. For more information, refer to [Devices API](../api-reference/devices-api.md).
 
 ```
 https://{host}/cws/api/devices

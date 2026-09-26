@@ -4,7 +4,6 @@ This repository contains the documentation for the Crestron Home® OS REST API.
 
 ## Table of Contents
 
-- [What's New](whats-new.md)
 - [Quick Start](quick-start/README.md)
   - [Prerequisites and Assumptions](quick-start/prerequisites-and-assumptions.md)
   - [Overview](quick-start/overview.md)

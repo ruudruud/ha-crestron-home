@@ -15,7 +15,7 @@ This tool is particularly useful for:
 4. Testing changes to the Home Assistant integration
 
 Usage:
-  python crestron_debug.py [options]
+  python scripts/crestron_debug.py [options]
 
 Options:
   --host HOST         Hostname or IP address of the Crestron Home system (overrides .env)
@@ -29,10 +29,10 @@ Options:
   --help              Show this help message and exit
 
 Examples:
-  python crestron_debug.py --room "Living Room" --sort level
-  python crestron_debug.py --room "Bijkeuken" --raw
-  python crestron_debug.py --sensors --room "Living Room"
-  python crestron_debug.py --lights --sort status
+  python scripts/crestron_debug.py --room "Living Room" --sort level
+  python scripts/crestron_debug.py --room "Bijkeuken" --raw
+  python scripts/crestron_debug.py --sensors --room "Living Room"
+  python scripts/crestron_debug.py --lights --sort status
 """
 
 import argparse

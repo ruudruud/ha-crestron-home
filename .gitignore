@@ -1,10 +1,10 @@
 # Python cache files
+.ruff_cache/
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -21,6 +21,7 @@ var/
 *.egg
 
 # Virtual environments
+.venv/
 venv/
 ENV/
 env/

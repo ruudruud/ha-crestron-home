@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Retry instant light commands once when the server disconnects.
+- Limit API requests to 10 seconds and restore entity availability after polling recovers.
+- Reduce polling overhead and routine logging.
+- Replace deprecated device links with controller registry IDs; require Home Assistant 2026.8 or newer.
+- Move the debug script to `scripts/crestron_debug.py`.
+
 ## 0.2.3 (2026-02-23)
 
 ### Bug Fixes

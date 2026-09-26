@@ -6,14 +6,10 @@
 
 This repository contains a custom component for Home Assistant that integrates with Crestron Home systems. It allows you to control your Crestron Home devices (lights, shades, scenes) and monitor sensors through Home Assistant.
 
-## Overview
-
-The integration communicates with the Crestron Home CWS (Crestron Web Service) server via HTTPS to discover and control devices in your Crestron Home system.
-
 ## Features
 
 - **Lights**: Control Crestron Home lights (dimmers with brightness control, switches with on/off)
-- **Shades**: Control Crestron Home shades (open, close, set position, stop movement)
+- **Shades**: Control Crestron Home shades (open, close, set position)
 - **Scenes**: Activate Crestron Home scenes with room-based organization
 - **Sensors**: Support for Crestron Home sensors:
   - Occupancy sensors (binary sensors for presence detection)
@@ -35,7 +31,7 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
 | DoorSensor              | Binary Sensor         | Door open/closed status, Battery level | Not tested |
 | PhotoSensor             | Sensor                | Light level measurement (lux) | Not tested |
 
-> **Note**: The OccupancySensor implementation has been thoroughly tested and works well with Crestron Home systems. The DoorSensor and PhotoSensor implementations are included but have not been tested with actual hardware yet.
+Shade stopping sends the last polled position as a new target; it is not a dedicated stop command and may move the shade back toward that position.
 
 ## Installation
 
@@ -99,30 +95,22 @@ The integration communicates with the Crestron Home CWS (Crestron Web Service) s
   - Network connectivity between Home Assistant and the Crestron processor
   - A valid API token for the Crestron Home system
 
-## Technical Details
+## How It Works
 
-This integration:
+The integration polls the Crestron Home REST API over HTTPS at the configured interval. Displayed states reflect the last successful poll. Failed polls mark entities unavailable; a successful poll restores availability, subject to each device's reported connection status.
 
-- Uses the Crestron Home REST API to communicate with the Crestron Home system
-- Implements proper session management (Crestron sessions expire after 10 minutes)
-- Provides a configuration flow for easy setup through the Home Assistant UI
-- Supports multiple device types with appropriate Home Assistant entity representations
-- Includes an abstraction layer that maintains a consistent snapshot of all devices
-- Handles device state normalization and visibility logic
-
-### How It Works
-
-The integration polls your Crestron Home system at the configured interval to keep device states in sync. Between polls, it maintains a local snapshot of all devices so that Home Assistant always has up-to-date state information. Devices marked as hidden in the configuration are automatically hidden in Home Assistant as well.
+Requests time out after 10 seconds. Instant light commands retry once if the server disconnects; transitions, shades, and scenes are not retried. Session authentication is renewed automatically.
 
 ### Debug Script
 
-The integration includes a standalone debug script (`crestron_debug.py`) that connects directly to your Crestron Home system and displays device information in formatted tables. This is useful for troubleshooting without involving Home Assistant.
+The integration includes a standalone debug script (`scripts/crestron_debug.py`) that connects directly to your Crestron Home system and displays device information in formatted tables. This is useful for troubleshooting without involving Home Assistant.
 
 ```bash
-python3 crestron_debug.py --host <crestron_host> --token <api_token>
+python3 scripts/crestron_debug.py --host <crestron_host> --token <api_token>
 ```
 
 Options:
+
 - `--host`: IP address or hostname of the Crestron Home system
 - `--token`: API token for authentication
 - `--room`: Filter devices by room name
@@ -131,7 +119,7 @@ Options:
 - `--sensors`: Show only sensors (occupancy, door, photo)
 - `--raw`: Show raw API data instead of formatted tables
 
-Host and token can also be set via a `.env` file to avoid passing them on every run.
+Host and token can also be set as `HOST` and `TOKEN` in a `.env` file in the repository root.
 
 ## Troubleshooting
 
