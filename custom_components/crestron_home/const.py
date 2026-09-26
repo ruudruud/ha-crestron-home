@@ -12,7 +12,10 @@ MODEL: Final = "Crestron Home OS"
 ATTRIBUTION: Final = "Data provided by Crestron Home® OS REST API"
 
 # Platforms
-PLATFORMS: Final = [Platform.LIGHT, Platform.COVER, Platform.SCENE, Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS: Final = [
+    Platform.LIGHT, Platform.COVER, Platform.SCENE,
+    Platform.BINARY_SENSOR, Platform.SENSOR, Platform.CLIMATE,
+]
 
 # Configuration and options
 CONF_HOST: Final = "host"
@@ -27,6 +30,7 @@ MIN_UPDATE_INTERVAL: Final = 10
 DEFAULT_IGNORED_DEVICE_NAMES: Final = []
 
 # Device types
+DEVICE_TYPE_CLIMATE: Final = "climate"
 DEVICE_TYPE_LIGHT: Final = "light"
 DEVICE_TYPE_SHADE: Final = "shade"
 DEVICE_TYPE_SCENE: Final = "scene"

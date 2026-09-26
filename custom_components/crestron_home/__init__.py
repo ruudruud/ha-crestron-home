@@ -21,6 +21,7 @@ from .const import (
     DEFAULT_IGNORED_DEVICE_NAMES,
     DEFAULT_UPDATE_INTERVAL,
     DEVICE_TYPE_BINARY_SENSOR,
+    DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_LIGHT,
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SENSOR,
@@ -88,7 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_clean_entity_registry(
         hass, entry,
         [kind for kind in (DEVICE_TYPE_LIGHT, DEVICE_TYPE_SHADE, DEVICE_TYPE_SCENE,
-                          DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_SENSOR)
+                          DEVICE_TYPE_BINARY_SENSOR, DEVICE_TYPE_SENSOR, DEVICE_TYPE_CLIMATE)
          if kind not in enabled_device_types],
     )
 
@@ -104,6 +105,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         enabled_platforms.append(Platform.SCENE)
     if DEVICE_TYPE_BINARY_SENSOR in enabled_device_types:
         enabled_platforms.append(Platform.BINARY_SENSOR)
+    if DEVICE_TYPE_CLIMATE in enabled_device_types:
+        enabled_platforms.append(Platform.CLIMATE)
     if DEVICE_TYPE_SENSOR in enabled_device_types:
         enabled_platforms.append(Platform.SENSOR)
     
@@ -132,6 +135,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         enabled_platforms.append(Platform.SCENE)
     if DEVICE_TYPE_BINARY_SENSOR in enabled_device_types:
         enabled_platforms.append(Platform.BINARY_SENSOR)
+    if DEVICE_TYPE_CLIMATE in enabled_device_types:
+        enabled_platforms.append(Platform.CLIMATE)
     if DEVICE_TYPE_SENSOR in enabled_device_types:
         enabled_platforms.append(Platform.SENSOR)
     
@@ -151,6 +156,7 @@ async def _async_clean_entity_registry(
     
     # Map device types to platform domains
     domain_mapping = {
+        DEVICE_TYPE_CLIMATE: Platform.CLIMATE,
         DEVICE_TYPE_LIGHT: Platform.LIGHT,
         DEVICE_TYPE_SHADE: Platform.COVER,
         DEVICE_TYPE_SCENE: Platform.SCENE,

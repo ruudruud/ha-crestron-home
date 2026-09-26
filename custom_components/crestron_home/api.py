@@ -15,6 +15,7 @@ from .const import (
     CRESTRON_API_PATH,
     CRESTRON_MAX_LEVEL,
     CRESTRON_SESSION_TIMEOUT,
+    DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_LIGHT,
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SHADE,
@@ -193,6 +194,7 @@ class CrestronClient:
                 (DEVICE_TYPE_LIGHT, "lights"),
                 (DEVICE_TYPE_SHADE, "shades"),
                 (DEVICE_TYPE_SCENE, "scenes"),
+                (DEVICE_TYPE_CLIMATE, "thermostats"),
             )
             if device_type in enabled_types
         }
@@ -238,8 +240,7 @@ class CrestronClient:
                     "",
                 )
                 device.update(item)
-                # A level field implies dimming only when no explicit subtype exists;
-                # switches also report a level.
+                # A level field implies dimming only without an explicit subtype; switches also report a level.
                 if not subtype:
                     if category == "shades":
                         subtype = "Shade"
@@ -247,9 +248,21 @@ class CrestronClient:
                         subtype = "Dimmer" if "level" in device else "Switch"
                 device["subType"] = subtype
 
+        for item in (responses.get(DEVICE_TYPE_CLIMATE) or {}).get("thermostats", []):
+            if item.get("id") is not None:
+                device = devices_by_id.setdefault(item["id"], {})
+                device.update(item)
+                device["subType"] = "Thermostat"
+
         room_names = {room["id"]: room.get("name", "") for room in self.rooms}
-        device_types = {"Dimmer": "light", "Switch": "light", "Shade": "shade"}
+        device_types = {
+            "Dimmer": DEVICE_TYPE_LIGHT,
+            "Switch": DEVICE_TYPE_LIGHT,
+            "Shade": DEVICE_TYPE_SHADE,
+            "Thermostat": DEVICE_TYPE_CLIMATE,
+        }
         subtypes = {name.lower(): name for name in device_types}
+        subtypes["drape"] = "Shade"
         devices: list[dict[str, Any]] = []
         for device in devices_by_id.values():
             subtype = device.get("subType") or device.get("type", "")
@@ -402,3 +415,17 @@ class CrestronClient:
         if value <= 0:
             return 0
         return round((CRESTRON_MAX_LEVEL * value) / 100)
+
+    async def set_thermostat(self, thermostat_id: int, action: str, value: Any) -> None:
+        """Send a thermostat command and require confirmed API acceptance."""
+        if action == "SetPoint":
+            payload = {"id": thermostat_id, "setpoints": value}
+        elif action in ("mode", "fanmode"):
+            payload = {"thermostats": [{"id": thermostat_id, "mode": value}]}
+        else:
+            raise ValueError("Unsupported thermostat action")
+        response = await self._api_request("POST", f"/thermostats/{action}", payload)
+        if response.get("status") != "success":
+            raise CrestronApiError(
+                response.get("errorMessage") or "Thermostat command was not accepted"
+            )

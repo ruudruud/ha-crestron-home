@@ -4,7 +4,7 @@
 [![GitHub Release](https://img.shields.io/github/release/ruudruud/ha-crestron-home.svg)](https://github.com/ruudruud/ha-crestron-home/releases)
 [![GitHub License](https://img.shields.io/github/license/ruudruud/ha-crestron-home.svg)](LICENSE)
 
-Control Crestron Home lights, shades, and scenes, and monitor sensors through Home Assistant. Devices are discovered over the local HTTPS API; states update by polling, every 15 seconds by default.
+Control Crestron Home lights, shades, thermostats, and scenes, and monitor sensors through Home Assistant. Devices are discovered over the local HTTPS API; states update by polling, every 15 seconds by default.
 
 ## Requirements
 
@@ -18,6 +18,8 @@ Control Crestron Home lights, shades, and scenes, and monitor sensors through Ho
 | Dimmer | Light | On/off, brightness | Yes |
 | Switch | Light | On/off | Yes |
 | Shade | Cover | Open/close, position | Yes |
+| Drape | Cover | Open/close, position | No |
+| Thermostat | Climate | Temperature, setpoints, system and fan modes | No |
 | Scene | Scene | Activate | Yes |
 | Occupancy sensor | Binary sensor | Occupancy | Yes |
 | Door sensor | Binary sensor | Open/closed, battery status | No |
@@ -35,6 +37,8 @@ Control Crestron Home lights, shades, and scenes, and monitor sensors through Ho
 2. In HA, open **Settings → Devices & services → Add integration → Crestron Home**.
 3. Enter the processor's IP address or hostname and API token, select device types, and submit.
 
+Thermostats are opt-in under device types. Scheduling is not supported; temperature controls require recognised units and reported limits.
+
 Optional settings:
 
 - **Update interval:** Defaults to 15 seconds; minimum 10. Shorter intervals increase processor traffic.
@@ -46,7 +50,7 @@ Deselecting a device type removes its entities and their customizations. Re-enab
 
 - **Connection failures:** Check processor reachability, host settings, Web API access, and the token. Inspect HA logs for `crestron_home` errors. Entities recover automatically when successful polling resumes and devices report available.
 - **Missing devices:** Check selected device types, hide patterns, and the Crestron configuration. Reload the integration to discover newly added devices.
-- **Known limitations:** Door and photo sensors have not been verified on hardware. Shade stopping targets the last polled position rather than issuing a dedicated stop command, so the shade may move back toward that position.
+- **Known limitations:** Drapes, thermostats, door and photo sensors have not been verified on hardware. Shade stopping targets the last polled position rather than issuing a dedicated stop command, so the shade may move back toward that position.
 
 ### Debug script
 

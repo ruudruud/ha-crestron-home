@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Recognise drapery motors as shades.
+- Add opt-in thermostat support for temperatures, setpoints, system and fan modes (not yet hardware-tested).
+
 ## 1.0.1 (2026-09-26)
 
 - Fix integration reloads after saving options or hide patterns.

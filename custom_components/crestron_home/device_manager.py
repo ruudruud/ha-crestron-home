@@ -13,6 +13,7 @@ from .const import (
     DEVICE_SUBTYPE_OCCUPANCY_SENSOR,
     DEVICE_SUBTYPE_PHOTO_SENSOR,
     DEVICE_TYPE_BINARY_SENSOR,
+    DEVICE_TYPE_CLIMATE,
     DEVICE_TYPE_LIGHT,
     DEVICE_TYPE_SCENE,
     DEVICE_TYPE_SENSOR,
@@ -75,6 +76,7 @@ class CrestronDeviceManager:
             "Dimmer": DEVICE_TYPE_LIGHT,
             "Switch": DEVICE_TYPE_LIGHT,
             "Shade": DEVICE_TYPE_SHADE,
+            "Thermostat": DEVICE_TYPE_CLIMATE,
             "Scene": DEVICE_TYPE_SCENE,
             "OccupancySensor": DEVICE_TYPE_BINARY_SENSOR,
             "DoorSensor": DEVICE_TYPE_BINARY_SENSOR,
@@ -152,6 +154,7 @@ class CrestronDeviceManager:
         self.last_poll_time = datetime.now()
 
         devices_by_type = {
+            DEVICE_TYPE_CLIMATE: [],
             DEVICE_TYPE_LIGHT: [],
             DEVICE_TYPE_SHADE: [],
             DEVICE_TYPE_SCENE: [],
@@ -224,7 +227,10 @@ class CrestronDeviceManager:
 
                 self.devices[device_id] = device
 
-            state_field = "position" if device_type == "Shade" else "level"
+            state_field = {
+                "Shade": "position",
+                "Thermostat": "currentTemperature",
+            }.get(device_type, "level")
             device.state_available = (
                 device_type == "Scene" or device_data.get(state_field) is not None
             )
@@ -385,6 +391,7 @@ class CrestronDeviceManager:
     def get_device_snapshot(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get a snapshot of all devices for debugging."""
         snapshot = {
+            "thermostats": [],
             "lights": [],
             "shades": [],
             "scenes": [],
@@ -413,6 +420,11 @@ class CrestronDeviceManager:
             if device.type == "Shade" or device.subtype == "Shade":
                 device_data["position"] = device.position
                 snapshot["shades"].append(device_data)
+            elif ha_device_type == DEVICE_TYPE_CLIMATE:
+                device_data["currentTemperature"] = device.raw_data.get(
+                    "currentTemperature"
+                )
+                snapshot["thermostats"].append(device_data)
             elif ha_device_type == DEVICE_TYPE_LIGHT:
                 snapshot["lights"].append(device_data)
             elif ha_device_type == DEVICE_TYPE_SCENE:
