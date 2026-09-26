@@ -1,12 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (2026-09-26)
 
 - Retry instant light commands once when the server disconnects.
 - Limit API requests to 10 seconds and restore entity availability after polling recovers.
 - Reduce polling overhead and routine logging.
 - Replace deprecated device links with controller registry IDs; require Home Assistant 2026.8 or newer.
 - Move the debug script to `scripts/crestron_debug.py`.
+- Add an integration icon.
+
+Known limitations: door and photo sensors have not been verified on hardware. Shade stopping targets the last polled position rather than issuing a dedicated stop command.
 
 ## 0.2.3 (2026-02-23)
 
