@@ -102,12 +102,13 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        # Find the device in the coordinator data
+        if not self.coordinator.last_update_success:
+            return False
+
         for device in self.coordinator.data.get(DEVICE_TYPE_SHADE, []):
             if device.id == self._device.id:
                 return device.is_available
         
-        # If device not found, use the stored state
         return self._device.is_available
 
     @property

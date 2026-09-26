@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Set
 
 from homeassistant.core import HomeAssistant
 
-from .api import CrestronApiError, CrestronClient
+from .api import CrestronClient
 
 # Set to True to enable detailed device logging
 DEBUG_MODE = True
@@ -137,73 +137,51 @@ class CrestronDeviceManager:
 
     async def poll_devices(self) -> Dict[str, List[CrestronDevice]]:
         """Poll devices from the Crestron Home system and update the device snapshot."""
-        try:
-            _LOGGER.debug(
-                "Polling devices with enabled types: %s, ignored names: %s",
-                self.enabled_device_types,
-                self.ignored_device_names
-            )
-            
-            # Store previous devices for future change detection
-            self.previous_devices = deepcopy(self.devices)
-            
-            # Get all devices and sensors from the Crestron Home system
-            results = await asyncio.gather(
-                self.client.get_devices(self.enabled_device_types, self.ignored_device_names),
-                self.client.get_sensors(self.ignored_device_names),
-            )
-            
-            devices_data = results[0]
-            sensors_data = results[1]
-            
-            _LOGGER.debug("Received %d devices and %d sensors from API", 
-                         len(devices_data), len(sensors_data))
-            
-            # Process devices
-            self._process_devices(devices_data)
-            
-            # Process sensors
-            self._process_sensors(sensors_data)
-            
-            # Update last poll time
-            self.last_poll_time = datetime.now()
-            
-            # TODO: Implement change detection logic here
-            # This will compare self.devices with self.previous_devices
-            
-            # Organize devices by type for easier access
-            devices_by_type = {
-                DEVICE_TYPE_LIGHT: [],
-                DEVICE_TYPE_SHADE: [],
-                DEVICE_TYPE_SCENE: [],
-                DEVICE_TYPE_BINARY_SENSOR: [],
-                DEVICE_TYPE_SENSOR: [],
-            }
-            
-            for device in self.devices.values():
-                ha_device_type = self._get_ha_device_type(device.type, device.subtype)
-                if ha_device_type and ha_device_type in devices_by_type:
-                    devices_by_type[ha_device_type].append(device)
-            
-            # Log device counts by type
-            for device_type, type_devices in devices_by_type.items():
-                _LOGGER.info("Found %d devices for %s platform", len(type_devices), device_type)
-            
-            # Log detailed device information if debug mode is enabled
-            if DEBUG_MODE:
-                self._log_device_snapshot()
-            
-            return devices_by_type
-        
-        except CrestronApiError as error:
-            _LOGGER.error("Error polling devices: %s", error)
-            return {
-                DEVICE_TYPE_LIGHT: [],
-                DEVICE_TYPE_SHADE: [],
-                DEVICE_TYPE_SCENE: [],
-                DEVICE_TYPE_BINARY_SENSOR: [],
-                DEVICE_TYPE_SENSOR: [],
-            }
+        _LOGGER.debug(
+            "Polling devices with enabled types: %s, ignored names: %s",
+            self.enabled_device_types,
+            self.ignored_device_names
+        )
+
+        results = await asyncio.gather(
+            self.client.get_devices(self.enabled_device_types, self.ignored_device_names),
+            self.client.get_sensors(self.ignored_device_names),
+        )
+
+        devices_data = results[0]
+        sensors_data = results[1]
+
+        _LOGGER.debug("Received %d devices and %d sensors from API",
+                     len(devices_data), len(sensors_data))
+
+        self.previous_devices = deepcopy(self.devices)
+
+        self._process_devices(devices_data)
+
+        self._process_sensors(sensors_data)
+
+        self.last_poll_time = datetime.now()
+
+        devices_by_type = {
+            DEVICE_TYPE_LIGHT: [],
+            DEVICE_TYPE_SHADE: [],
+            DEVICE_TYPE_SCENE: [],
+            DEVICE_TYPE_BINARY_SENSOR: [],
+            DEVICE_TYPE_SENSOR: [],
+        }
+
+        for device in self.devices.values():
+            ha_device_type = self._get_ha_device_type(device.type, device.subtype)
+            if ha_device_type and ha_device_type in devices_by_type:
+                devices_by_type[ha_device_type].append(device)
+
+        for device_type, type_devices in devices_by_type.items():
+            _LOGGER.info("Found %d devices for %s platform", len(type_devices), device_type)
+
+        if DEBUG_MODE:
+            self._log_device_snapshot()
+
+        return devices_by_type
 
     def _process_devices(self, devices_data: List[Dict[str, Any]]) -> None:
         """Process device data from the API and update the device snapshot."""

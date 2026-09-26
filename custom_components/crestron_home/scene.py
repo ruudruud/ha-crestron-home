@@ -86,11 +86,10 @@ class CrestronHomeScene(CrestronRoomEntity, CoordinatorEntity, Scene):
             suggested_area=device.room,
         )
     
-    # Scenes are always available
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return True
+        return self.coordinator.last_update_success
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""
