@@ -75,7 +75,11 @@ class CrestronDeviceManager:
         self.hass = hass
         self.client = client
         self.enabled_device_types = enabled_device_types
-        self.ignored_device_names = ignored_device_names or []
+        self.ignored_device_names = [
+            pattern.strip().lower()
+            for pattern in ignored_device_names or []
+            if pattern.strip()
+        ]
         
         # Device storage
         self.devices: Dict[int, CrestronDevice] = {}
@@ -108,24 +112,17 @@ class CrestronDeviceManager:
         device_type = device_type.lower()
         
         for pattern in self.ignored_device_names:
-            pattern = pattern.lower()
-            
-            # Check for different pattern types
             if pattern.startswith("%") and pattern.endswith("%"):
-                # %bathroom% → contains bathroom
                 search_term = pattern[1:-1]
                 if search_term in name or search_term in device_type:
                     return True
             elif pattern.startswith("%"):
-                # %bathroom → ends with bathroom
                 if name.endswith(pattern[1:]) or device_type.endswith(pattern[1:]):
                     return True
             elif pattern.endswith("%"):
-                # bathroom% → starts with bathroom
                 if name.startswith(pattern[:-1]) or device_type.startswith(pattern[:-1]):
                     return True
             else:
-                # bathroom → exact match
                 if name == pattern or device_type == pattern:
                     return True
         

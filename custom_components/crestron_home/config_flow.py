@@ -138,7 +138,6 @@ class CrestronHomeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_IGNORED_DEVICE_NAMES, default=DEFAULT_IGNORED_DEVICE_NAMES): selector.TextSelector(
                         selector.TextSelectorConfig(
                             multiple=True,
-                            suffix="Use % as wildcard (e.g., %bathroom%)",
                         ),
                     ),
                 }
@@ -220,7 +219,6 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             multiple=True,
-                            suffix="Use % as wildcard (e.g., %bathroom%)",
                         ),
                     ),
                 }

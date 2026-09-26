@@ -13,7 +13,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import CrestronClient
@@ -57,10 +56,6 @@ async def async_setup_entry(
         else:
             light = CrestronHomeLight(coordinator, device)
         
-        # Set hidden_by if device is marked as hidden
-        if device.ha_hidden:
-            light._attr_hidden_by = "integration"
-            
         lights.append(light)
     
     _LOGGER.debug("Adding %d light entities", len(lights))
@@ -106,19 +101,6 @@ class CrestronHomeBaseLight(CrestronRoomEntity, CoordinatorEntity, LightEntity):
         
         return self._device.is_available
         
-    async def async_added_to_hass(self) -> None:
-        """Run when entity about to be added to hass."""
-        await super().async_added_to_hass()
-        
-        # Ensure hidden status is properly registered in the entity registry
-        if self._device.ha_hidden:
-            entity_registry = async_get_entity_registry(self.hass)
-            if entity_registry.async_get(self.entity_id):
-                entity_registry.async_update_entity(
-                    self.entity_id, 
-                    hidden_by="integration"
-                )
-
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""

@@ -8,9 +8,12 @@
         "data": {
           "host": "Host (IP address or hostname)",
           "token": "API Token",
-          "update_interval": "Update Interval (seconds)",
-          "enabled_device_types": "Add Device Types",
-          "ignored_device_names": "Ignored Device Names (optional)"
+          "update_interval": "Update interval",
+          "enabled_device_types": "Device types to include",
+          "ignored_device_names": "Hide pattern"
+        },
+        "data_description": {
+          "ignored_device_names": "Optional. Add one pattern per entry to hide matching entities. Matching is case-insensitive and includes the room name and device type. Use % at the start or end: %bathroom% matches anything containing bathroom."
         }
       }
     },
@@ -29,9 +32,12 @@
         "title": "Crestron Home Options",
         "description": "Configure your Crestron Home integration",
         "data": {
-          "update_interval": "Update Interval (seconds)",
-          "enabled_device_types": "Add Device Types",
-          "ignored_device_names": "Ignored Device Names (optional)"
+          "update_interval": "Update interval",
+          "enabled_device_types": "Device types to include",
+          "ignored_device_names": "Hide pattern"
+        },
+        "data_description": {
+          "ignored_device_names": "Optional. Add one pattern per entry to hide matching entities. Matching is case-insensitive and includes the room name and device type. Use % at the start or end: %bathroom% matches anything containing bathroom."
         }
       }
     },

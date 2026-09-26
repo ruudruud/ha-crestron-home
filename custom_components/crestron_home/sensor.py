@@ -15,7 +15,6 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
@@ -54,10 +53,6 @@ async def async_setup_entry(
         if device.subtype == DEVICE_SUBTYPE_PHOTO_SENSOR:
             sensor = CrestronHomePhotoSensor(coordinator, device)
             
-            # Set hidden_by if device is marked as hidden
-            if device.ha_hidden:
-                sensor._attr_hidden_by = "integration"
-                
             sensors.append(sensor)
     
     _LOGGER.debug("Adding %d sensor entities", len(sensors))
@@ -102,19 +97,6 @@ class CrestronHomeSensor(CrestronRoomEntity, CoordinatorEntity, SensorEntity):
         
         return self._device.is_available
 
-    async def async_added_to_hass(self) -> None:
-        """Run when entity about to be added to hass."""
-        await super().async_added_to_hass()
-        
-        # Ensure hidden status is properly registered in the entity registry
-        if self._device.ha_hidden:
-            entity_registry = async_get_entity_registry(self.hass)
-            if entity_registry.async_get(self.entity_id):
-                entity_registry.async_update_entity(
-                    self.entity_id, 
-                    hidden_by="integration"
-                )
-    
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""

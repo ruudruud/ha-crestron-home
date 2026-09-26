@@ -81,8 +81,10 @@ Shade stopping sends the last polled position as a new target; it is not a dedic
      - Scenes: All scenes defined in your Crestron Home system
      - Binary Sensors: Occupancy sensors and door sensors
      - Sensors: Photosensors and other measurement devices
-   - **Ignored Device Names** (optional): Device name patterns to exclude
-     - Use `%` as wildcard (e.g., `%bathroom%` ignores all devices with "bathroom" in the name)
+   - **Hide pattern** (optional): Add one pattern per entry to hide matching entities
+     - Matching is case-insensitive and checks the full name (room and device name) and device type
+     - Use `%` at the start or end (e.g., `%bathroom%` matches names containing "bathroom")
+     - Matching entities are still created and polled. Removing a pattern unhides them unless you manually hid them.
 5. Click "Submit"
 6. Please allow for some time for the device synchronization.
 
