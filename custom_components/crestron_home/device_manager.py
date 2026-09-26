@@ -1,16 +1,13 @@
 """Device manager for Crestron Home integration."""
 import asyncio
 import logging
-from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from homeassistant.core import HomeAssistant
 
 from .api import CrestronClient
 
-# Set to True to enable detailed device logging
-DEBUG_MODE = True
 from .const import (
     DEVICE_SUBTYPE_DOOR_SENSOR,
     DEVICE_SUBTYPE_OCCUPANCY_SENSOR,
@@ -82,7 +79,6 @@ class CrestronDeviceManager:
         
         # Device storage
         self.devices: Dict[int, CrestronDevice] = {}
-        self.previous_devices: Dict[int, CrestronDevice] = {}
         self.last_poll_time: Optional[datetime] = None
         
         # Mapping of Crestron device types to Home Assistant device types
@@ -154,8 +150,6 @@ class CrestronDeviceManager:
         _LOGGER.debug("Received %d devices and %d sensors from API",
                      len(devices_data), len(sensors_data))
 
-        self.previous_devices = deepcopy(self.devices)
-
         self._process_devices(devices_data)
 
         self._process_sensors(sensors_data)
@@ -176,9 +170,9 @@ class CrestronDeviceManager:
                 devices_by_type[ha_device_type].append(device)
 
         for device_type, type_devices in devices_by_type.items():
-            _LOGGER.info("Found %d devices for %s platform", len(type_devices), device_type)
+            _LOGGER.debug("Found %d devices for %s platform", len(type_devices), device_type)
 
-        if DEBUG_MODE:
+        if _LOGGER.isEnabledFor(logging.DEBUG):
             self._log_device_snapshot()
 
         return devices_by_type
@@ -191,7 +185,6 @@ class CrestronDeviceManager:
                 continue
                 
             device_type = device_data.get("subType") or device_data.get("type", "")
-            ha_device_type = self._get_ha_device_type(device_type, device_type)
             
             # Process all devices regardless of type
                 
@@ -258,16 +251,6 @@ class CrestronDeviceManager:
                 continue
                 
             sensor_type = sensor_data.get("subType", "")
-            ha_device_type = None
-            
-            # Determine sensor type
-            if sensor_type == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
-                ha_device_type = DEVICE_TYPE_BINARY_SENSOR
-            elif sensor_type == DEVICE_SUBTYPE_DOOR_SENSOR:
-                ha_device_type = DEVICE_TYPE_BINARY_SENSOR
-            elif sensor_type == DEVICE_SUBTYPE_PHOTO_SENSOR:
-                ha_device_type = DEVICE_TYPE_SENSOR
-            
             # Process all sensors regardless of type
                 
             # Get room information
@@ -278,9 +261,6 @@ class CrestronDeviceManager:
                     (r.get("name", "") for r in self.client.rooms if r.get("id") == room_id),
                     "",
                 )
-            
-            # Create sensor name
-            sensor_name = f"{room_name} {sensor_data.get('name', '')}".strip()
             
             # Process all sensors regardless of ignored patterns
             
@@ -375,10 +355,9 @@ class CrestronDeviceManager:
     def _log_device_snapshot(self) -> None:
         """Log a detailed snapshot of all devices for debugging."""
         if not self.devices:
-            _LOGGER.info("No devices found to log")
+            _LOGGER.debug("No devices found to log")
             return
         
-        # Group devices by room for better readability
         devices_by_room: Dict[str, List[CrestronDevice]] = {}
         for device in self.devices.values():
             room_name = device.room or "Unknown Room"
@@ -386,53 +365,48 @@ class CrestronDeviceManager:
                 devices_by_room[room_name] = []
             devices_by_room[room_name].append(device)
         
-        # Log header
-        _LOGGER.info("=" * 80)
-        _LOGGER.info("CRESTRON DEVICE SNAPSHOT")
-        _LOGGER.info("=" * 80)
-        _LOGGER.info("Total devices: %d", len(self.devices))
-        _LOGGER.info("Last updated: %s", self.last_poll_time.isoformat() if self.last_poll_time else "Never")
-        _LOGGER.info("=" * 80)
+        _LOGGER.debug("=" * 80)
+        _LOGGER.debug("CRESTRON DEVICE SNAPSHOT")
+        _LOGGER.debug("=" * 80)
+        _LOGGER.debug("Total devices: %d", len(self.devices))
+        _LOGGER.debug("Last updated: %s", self.last_poll_time.isoformat() if self.last_poll_time else "Never")
+        _LOGGER.debug("=" * 80)
         
-        # Log devices by room
         for room_name, room_devices in sorted(devices_by_room.items()):
-            _LOGGER.info("")
-            _LOGGER.info("ROOM: %s (%d devices)", room_name, len(room_devices))
-            _LOGGER.info("-" * 80)
+            _LOGGER.debug("")
+            _LOGGER.debug("ROOM: %s (%d devices)", room_name, len(room_devices))
+            _LOGGER.debug("-" * 80)
             
-            # Sort devices by type and name
             room_devices.sort(key=lambda d: (d.type, d.name))
             
             for device in room_devices:
-                # Log basic device information
-                _LOGGER.info("DEVICE: %s (ID: %d)", device.full_name, device.id)
-                _LOGGER.info("  Type: %s / Subtype: %s", device.type, device.subtype)
-                _LOGGER.info("  Status: %s / Level: %d", "ON" if device.status else "OFF", device.level)
-                _LOGGER.info("  Connection: %s / Last Updated: %s", 
+                _LOGGER.debug("DEVICE: %s (ID: %d)", device.full_name, device.id)
+                _LOGGER.debug("  Type: %s / Subtype: %s", device.type, device.subtype)
+                _LOGGER.debug("  Status: %s / Level: %d", "ON" if device.status else "OFF", device.level)
+                _LOGGER.debug("  Connection: %s / Last Updated: %s",
                             device.connection, device.last_updated.isoformat())
-                _LOGGER.info("  Availability reason: %s / HA State: %s / HA Hidden: %s",
+                _LOGGER.debug("  Availability reason: %s / HA State: %s / HA Hidden: %s",
                             device.ha_reason or "None", device.ha_state, device.ha_hidden)
                 
-                # Log device-specific properties
                 if device.type == "Shade" or device.subtype == "Shade":
-                    _LOGGER.info("  Position: %d", device.position)
+                    _LOGGER.debug("  Position: %d", device.position)
                 
                 if device.subtype == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
-                    _LOGGER.info("  Presence: %s", device.presence)
+                    _LOGGER.debug("  Presence: %s", device.presence)
                 
                 if device.subtype == DEVICE_SUBTYPE_DOOR_SENSOR:
-                    _LOGGER.info("  Door Status: %s / Battery Level: %s", 
+                    _LOGGER.debug("  Door Status: %s / Battery Level: %s",
                                 device.door_status, device.battery_level)
                 
                 if device.subtype == DEVICE_SUBTYPE_PHOTO_SENSOR:
-                    _LOGGER.info("  Value: %s / Unit: %s", 
+                    _LOGGER.debug("  Value: %s / Unit: %s",
                                 device.value, device.unit or "None")
                 
-                _LOGGER.info("-" * 80)
+                _LOGGER.debug("-" * 80)
         
-        _LOGGER.info("=" * 80)
-        _LOGGER.info("END OF DEVICE SNAPSHOT")
-        _LOGGER.info("=" * 80)
+        _LOGGER.debug("=" * 80)
+        _LOGGER.debug("END OF DEVICE SNAPSHOT")
+        _LOGGER.debug("=" * 80)
 
     def get_device_snapshot(self) -> Dict[str, List[Dict[str, Any]]]:
         """Get a snapshot of all devices for debugging."""

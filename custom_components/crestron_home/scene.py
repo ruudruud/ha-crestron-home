@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from homeassistant.components.scene import Scene
 from homeassistant.config_entries import ConfigEntry
@@ -14,7 +14,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_ENABLED_DEVICE_TYPES,
-    DEVICE_SUBTYPE_SCENE,
     DEVICE_TYPE_SCENE,
     DOMAIN,
     MANUFACTURER,
@@ -105,7 +104,7 @@ class CrestronHomeScene(CrestronRoomEntity, CoordinatorEntity, Scene):
         # Ensure hidden status is properly registered in the entity registry
         if self._device.ha_hidden:
             entity_registry = async_get_entity_registry(self.hass)
-            if entry := entity_registry.async_get(self.entity_id):
+            if entity_registry.async_get(self.entity_id):
                 entity_registry.async_update_entity(
                     self.entity_id, 
                     hidden_by="integration"

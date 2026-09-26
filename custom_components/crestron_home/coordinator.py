@@ -1,7 +1,7 @@
 """DataUpdateCoordinator for Crestron Home integration."""
 from datetime import timedelta
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import (

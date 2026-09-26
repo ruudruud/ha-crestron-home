@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from homeassistant.components.cover import (
     ATTR_POSITION,
@@ -10,7 +10,6 @@ from homeassistant.components.cover import (
     CoverEntity,
     CoverEntityFeature,
 )
-from homeassistant.const import ATTR_ENTITY_PICTURE, Platform
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
@@ -21,7 +20,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .api import CrestronClient
 from .const import (
     CONF_ENABLED_DEVICE_TYPES,
-    DEVICE_SUBTYPE_SHADE,
     DEVICE_TYPE_SHADE,
     DOMAIN,
     MANUFACTURER,
@@ -177,7 +175,7 @@ class CrestronHomeShade(CrestronRoomEntity, CoordinatorEntity, CoverEntity):
         # Ensure hidden status is properly registered in the entity registry
         if self._device.ha_hidden:
             entity_registry = async_get_entity_registry(self.hass)
-            if entry := entity_registry.async_get(self.entity_id):
+            if entity_registry.async_get(self.entity_id):
                 entity_registry.async_update_entity(
                     self.entity_id, 
                     hidden_by="integration"

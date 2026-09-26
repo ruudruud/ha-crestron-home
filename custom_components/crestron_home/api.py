@@ -4,7 +4,7 @@ import logging
 import os
 import ssl
 import time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional
 
 import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError, ClientResponseError
@@ -293,7 +293,7 @@ class CrestronClient:
             _LOGGER.debug("Added scene: %s (ID: %s, Type: %s)",
                          scene_info["name"], scene_info["id"], scene_info["sceneType"])
 
-        _LOGGER.info("Found %d devices matching enabled types", len(devices))
+        _LOGGER.debug("Found %d devices", len(devices))
         return devices
 
     async def get_device(self, device_id: int) -> Dict[str, Any]:

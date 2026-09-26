@@ -1,8 +1,6 @@
 """Entity base classes for Crestron Home integration."""
 import logging
-from typing import Any, Dict, Optional
-
-from homeassistant.helpers.entity import Entity
+from typing import Optional
 
 from .models import CrestronDevice
 

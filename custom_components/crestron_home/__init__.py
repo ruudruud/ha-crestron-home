@@ -1,10 +1,8 @@
 """The Crestron Home integration."""
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-from typing import Any, List, Set
+from typing import List
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -30,7 +28,6 @@ from .const import (
     DOMAIN,
     MANUFACTURER,
     MODEL,
-    PLATFORMS,
     STARTUP_MESSAGE,
 )
 from .coordinator import CrestronHomeDataUpdateCoordinator
@@ -154,9 +151,6 @@ async def _async_clean_entity_registry(
                         if device_type in domain_mapping]
     
     _LOGGER.debug("Cleaning up entities for domains: %s", domains_to_clean)
-    
-    # Find entities for this config entry
-    entity_entries = async_get_entity_registry(hass).entities.values()
     
     # Get entities to remove (those belonging to this config entry and disabled domains)
     entities_to_remove = [

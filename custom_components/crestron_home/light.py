@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Optional
 
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ColorMode,
     LightEntity,
-    LightEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -114,7 +113,7 @@ class CrestronHomeBaseLight(CrestronRoomEntity, CoordinatorEntity, LightEntity):
         # Ensure hidden status is properly registered in the entity registry
         if self._device.ha_hidden:
             entity_registry = async_get_entity_registry(self.hass)
-            if entry := entity_registry.async_get(self.entity_id):
+            if entity_registry.async_get(self.entity_id):
                 entity_registry.async_update_entity(
                     self.entity_id, 
                     hidden_by="integration"
