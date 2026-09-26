@@ -16,6 +16,7 @@ class CrestronDevice:
     status: bool = False
     level: int = 0
     connection: str = "online"
+    state_available: bool = True
     last_updated: datetime = field(default_factory=datetime.now)
     
     # Home Assistant specific fields
@@ -45,4 +46,4 @@ class CrestronDevice:
     @property
     def is_available(self) -> bool:
         """Return if the device is available."""
-        return self.connection != "offline"
+        return self.state_available and self.connection != "offline"

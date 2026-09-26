@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from homeassistant.core import HomeAssistant
 
-from .api import CrestronClient
+from .api import CrestronApiError, CrestronClient
 
 from .const import (
     DEVICE_SUBTYPE_DOOR_SENSOR,
@@ -27,42 +27,27 @@ class CrestronDeviceManager:
     """Manager for Crestron devices."""
 
     def _update_ha_parameters(self, device: CrestronDevice) -> None:
-        """Update Home Assistant parameters based on device status.
-        
-        Logic:
-        - If device is functioning normally: state = available
-        - If device is offline: state = unavailable
-        - If device matches an ignored pattern: hidden = true, state = N/A
-        - If device type is disabled in config: hidden = true, state = N/A
-        """
-        
-        # Get the Home Assistant device type
+        """Apply visibility filters and report state availability."""
         ha_device_type = self._get_ha_device_type(device.type, device.subtype)
-        
-        # Check if device matches an ignored pattern
         if self._matches_ignored_pattern(device.full_name, device.type):
-            device.ha_hidden = True    # Mark as hidden
-            device.ha_state = None     # N/A
+            device.ha_hidden = True
+            device.ha_state = None
             device.ha_reason = "Device hidden by name filter"
             return
-        
-        # Check if device type is disabled in config
         if ha_device_type and ha_device_type not in self.enabled_device_types:
-            device.ha_hidden = True    # Mark as hidden
-            device.ha_state = None     # N/A
+            device.ha_hidden = True
+            device.ha_state = None
             device.ha_reason = "Device hidden by category filter"
             return
-        
-        # Device is not hidden
+
         device.ha_hidden = False
-        
-        # Check connection status for availability
-        if device.connection == "offline":
-            device.ha_state = False  # Unavailable
+        device.ha_state = device.is_available
+        if not device.state_available:
+            device.ha_reason = "Device state unavailable"
+        elif device.connection == "offline":
             device.ha_reason = "Device is offline"
         else:
-            device.ha_state = True  # Available
-            device.ha_reason = ""  # No reason needed for normal operation
+            device.ha_reason = ""
 
     def __init__(
         self,
@@ -136,19 +121,32 @@ class CrestronDeviceManager:
             self.ignored_device_names
         )
 
-        results = await asyncio.gather(
-            self.client.get_devices(self.enabled_device_types, self.ignored_device_names),
-            self.client.get_sensors(self.ignored_device_names),
+        poll_sensors = any(
+            device_type in self.enabled_device_types
+            for device_type in (DEVICE_TYPE_SENSOR, DEVICE_TYPE_BINARY_SENSOR)
         )
-
-        devices_data = results[0]
-        sensors_data = results[1]
+        requests = [self.client.get_devices(self.enabled_device_types)]
+        if poll_sensors:
+            requests.append(self.client.get_sensors())
+        results = await asyncio.gather(*requests)
+        devices_data, failed_types = results[0]
+        sensors_data = results[1] if poll_sensors else []
+        if sensors_data is None:
+            failed_types.update((DEVICE_TYPE_SENSOR, DEVICE_TYPE_BINARY_SENSOR))
+            sensors_data = []
+        if failed_types and self.last_poll_time is None:
+            # Platforms discover entities at setup; retry rather than omit a category.
+            message = (
+                f"Initial device discovery failed: {', '.join(sorted(failed_types))}"
+            )
+            raise CrestronApiError(message)
 
         _LOGGER.debug("Received %d devices and %d sensors from API",
                      len(devices_data), len(sensors_data))
 
+        for device in self.devices.values():
+            device.state_available = False
         self._process_devices(devices_data)
-
         self._process_sensors(sensors_data)
 
         self.last_poll_time = datetime.now()
@@ -162,6 +160,7 @@ class CrestronDeviceManager:
         }
 
         for device in self.devices.values():
+            self._update_ha_parameters(device)
             ha_device_type = self._get_ha_device_type(device.type, device.subtype)
             if ha_device_type and ha_device_type in devices_by_type:
                 devices_by_type[ha_device_type].append(device)
@@ -180,46 +179,35 @@ class CrestronDeviceManager:
             device_id = device_data.get("id")
             if not device_id:
                 continue
-                
+
             device_type = device_data.get("subType") or device_data.get("type", "")
-            
-            # Process all devices regardless of type
-                
-            # Get room information
+
             room_id = device_data.get("roomId")
             room_name = device_data.get("roomName", "")
-            
-            # Create or update device
+
             if device_id in self.devices:
-                # Update existing device
                 device = self.devices[device_id]
+                device.room = room_name
+                device.room_id = room_id
                 device.status = device_data.get("status", False)
-                device.level = device_data.get("level", 0)
-                
-                # Set appropriate connection status for update
-                # Scenes don't have a physical connection status
+                if device_data.get("level") is not None:
+                    device.level = device_data["level"]
+
                 if device_type == "Scene":
                     device.connection = "n/a"
                 else:
                     device.connection = device_data.get("connectionStatus", "online")
-                
+
                 device.last_updated = datetime.now()
-                
-                # Update position for shades
-                if device_type == "Shade":
-                    device.position = device_data.get("position", 0)
-                
-                # Update raw data
+
+                if device_type == "Shade" and device_data.get("position") is not None:
+                    device.position = device_data["position"]
+
                 device.raw_data = device_data
-                
-                # Update Home Assistant parameters
-                self._update_ha_parameters(device)
+
             else:
-                # Set appropriate connection status
-                # Scenes don't have a physical connection status
                 connection_status = "n/a" if device_type == "Scene" else device_data.get("connectionStatus", "online")
-                
-                # Create new device
+
                 device = CrestronDevice(
                     id=device_id,
                     room=room_name,
@@ -227,18 +215,19 @@ class CrestronDeviceManager:
                     type=device_type,
                     subtype=device_type,
                     status=device_data.get("status", False),
-                    level=device_data.get("level", 0),
+                    level=device_data.get("level") or 0,
                     connection=connection_status,
                     room_id=room_id,
-                    position=device_data.get("position", 0) if device_type == "Shade" else 0,
+                    position=(device_data.get("position") or 0) if device_type == "Shade" else 0,
                     raw_data=device_data,
                 )
-                
-                # Add to devices dictionary
+
                 self.devices[device_id] = device
-                
-                # Update Home Assistant parameters
-                self._update_ha_parameters(device)
+
+            state_field = "position" if device_type == "Shade" else "level"
+            device.state_available = (
+                device_type == "Scene" or device_data.get(state_field) is not None
+            )
 
     def _process_sensors(self, sensors_data: List[Dict[str, Any]]) -> None:
         """Process sensor data from the API and update the device snapshot."""
@@ -246,11 +235,9 @@ class CrestronDeviceManager:
             sensor_id = sensor_data.get("id")
             if not sensor_id:
                 continue
-                
+
             sensor_type = sensor_data.get("subType", "")
-            # Process all sensors regardless of type
-                
-            # Get room information
+
             room_id = sensor_data.get("roomId")
             room_name = ""
             if room_id:
@@ -258,17 +245,14 @@ class CrestronDeviceManager:
                     (r.get("name", "") for r in self.client.rooms if r.get("id") == room_id),
                     "",
                 )
-            
-            # Process all sensors regardless of ignored patterns
-            
-            # Create or update sensor
+
             if sensor_id in self.devices:
-                # Update existing sensor
                 sensor = self.devices[sensor_id]
+                sensor.room = room_name
+                sensor.room_id = room_id
                 sensor.connection = sensor_data.get("connectionStatus", "online")
                 sensor.last_updated = datetime.now()
-                
-                # Update sensor-specific properties
+
                 if sensor_type == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
                     sensor.presence = sensor_data.get("presence", "Unavailable")
                     sensor.status = sensor_data.get("presence", "Unavailable") not in ["Vacant", "Unavailable"]
@@ -279,14 +263,10 @@ class CrestronDeviceManager:
                 elif sensor_type == DEVICE_SUBTYPE_PHOTO_SENSOR:
                     sensor.value = sensor_data.get("level", 0)
                     sensor.level = sensor_data.get("level", 0)
-                
-                # Update raw data
+
                 sensor.raw_data = sensor_data
-                
-                # Update Home Assistant parameters
-                self._update_ha_parameters(sensor)
+
             else:
-                # Create new sensor
                 sensor = CrestronDevice(
                     id=sensor_id,
                     room=room_name,
@@ -297,8 +277,7 @@ class CrestronDeviceManager:
                     room_id=room_id,
                     raw_data=sensor_data,
                 )
-                
-                # Set sensor-specific properties
+
                 if sensor_type == DEVICE_SUBTYPE_OCCUPANCY_SENSOR:
                     sensor.presence = sensor_data.get("presence", "Unavailable")
                     sensor.status = sensor_data.get("presence", "Unavailable") not in ["Vacant", "Unavailable"]
@@ -309,12 +288,10 @@ class CrestronDeviceManager:
                 elif sensor_type == DEVICE_SUBTYPE_PHOTO_SENSOR:
                     sensor.value = sensor_data.get("level", 0)
                     sensor.level = sensor_data.get("level", 0)
-                
-                # Add to devices dictionary
+
                 self.devices[sensor_id] = sensor
-                
-                # Update Home Assistant parameters
-                self._update_ha_parameters(sensor)
+
+            sensor.state_available = True
 
     def _get_ha_device_type(self, device_type: str, subtype: str) -> Optional[str]:
         """Map Crestron device type to Home Assistant device type."""

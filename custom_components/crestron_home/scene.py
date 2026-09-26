@@ -83,7 +83,7 @@ class CrestronHomeScene(CrestronRoomEntity, CoordinatorEntity, Scene):
     @property
     def available(self) -> bool:
         """Return if entity is available."""
-        return self.coordinator.last_update_success
+        return self.coordinator.last_update_success and self._device.is_available
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Activate the scene."""

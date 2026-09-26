@@ -1,7 +1,6 @@
 """API Client for Crestron Home."""
 import asyncio
 import logging
-import os
 import ssl
 import time
 from typing import Any, Dict, List, Optional
@@ -16,10 +15,14 @@ from .const import (
     CRESTRON_API_PATH,
     CRESTRON_MAX_LEVEL,
     CRESTRON_SESSION_TIMEOUT,
+    DEVICE_TYPE_LIGHT,
+    DEVICE_TYPE_SCENE,
+    DEVICE_TYPE_SHADE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 _REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=10)
+_ROOM_CACHE_TTL = 300
 
 
 class CrestronApiError(Exception):
@@ -48,6 +51,7 @@ class CrestronClient:
         self.auth_key: Optional[str] = None
         self.last_login: float = 0
         self.rooms: List[Dict[str, Any]] = []
+        self._rooms_expire_at = 0.0
         self._session = async_get_clientsession(hass, verify_ssl=False)
         self._ssl_context = None
         
@@ -169,35 +173,40 @@ class CrestronClient:
             _LOGGER.error("API request error: %s", error)
             raise CrestronApiError(f"API request error: {error}") from error
 
-    async def get_devices(self, enabled_types: List[str], ignored_device_names: List[str] = None) -> List[Dict[str, Any]]:
-        """Get all devices from the Crestron Home system."""
-        _LOGGER.debug("Getting devices from Crestron Home with enabled types: %s", enabled_types)
+    async def _poll_endpoint(self, endpoint: str) -> dict[str, Any] | None:
+        """Keep unavailable state distinct from a successful empty inventory."""
+        try:
+            return await self._api_request("GET", endpoint)
+        except CrestronAuthError:
+            raise
+        except CrestronApiError as error:
+            _LOGGER.warning("Could not poll %s: %s", endpoint, error)
+            return None
 
-        # Get ignored device names from environment if not provided
-        if ignored_device_names is None:
-            ignored_device_names_str = os.environ.get("IGNORED_DEVICE_NAMES", "")
-            if ignored_device_names_str:
-                ignored_device_names = [name.strip() for name in ignored_device_names_str.split(",")]
-            else:
-                ignored_device_names = []
-
-        _LOGGER.debug("Using ignored device name patterns: %s", ignored_device_names)
-
+    async def get_devices(
+        self, enabled_types: list[str],
+    ) -> tuple[list[dict[str, Any]], set[str]]:
+        """Return discovered state and categories whose endpoints failed."""
+        endpoints = {
+            device_type: endpoint
+            for device_type, endpoint in (
+                (DEVICE_TYPE_LIGHT, "lights"),
+                (DEVICE_TYPE_SHADE, "shades"),
+                (DEVICE_TYPE_SCENE, "scenes"),
+            )
+            if device_type in enabled_types
+        }
         results = await asyncio.gather(
-            self._api_request("GET", "/rooms"),
-            self._api_request("GET", "/scenes"),
+            self.get_rooms(),
             self._api_request("GET", "/devices"),
-            self._api_request("GET", "/lights"),
-            self._api_request("GET", "/shades"),
+            *(self._poll_endpoint(f"/{endpoint}") for endpoint in endpoints.values()),
         )
-
-        rooms_data = results[0]
-        scenes_data = results[1]
-        devices_data = results[2]
-        lights_data = results[3]
-        shades_data = results[4]
-
-        self.rooms = rooms_data.get("rooms", [])
+        responses = dict(zip(endpoints, results[2:], strict=True))
+        failed_types = {kind for kind, data in responses.items() if data is None}
+        devices_data = results[1]
+        lights_data = responses.get(DEVICE_TYPE_LIGHT) or {}
+        shades_data = responses.get(DEVICE_TYPE_SHADE) or {}
+        scenes_data = responses.get(DEVICE_TYPE_SCENE) or {}
 
         _LOGGER.debug("Found %d rooms, %d scenes, %d devices, %d lights, %d shades",
                      len(self.rooms),
@@ -206,86 +215,75 @@ class CrestronClient:
                      len(lights_data.get("lights", [])),
                      len(shades_data.get("shades", [])))
 
-        devices: List[Dict[str, Any]] = []
-
-        lights_by_id = {
-            light.get("id"): light
-            for light in lights_data.get("lights", [])
+        devices_by_id = {
+            device["id"]: dict(device)
+            for device in devices_data.get("devices", [])
+            if device.get("id") is not None
         }
-        shades_by_id = {
-            shade.get("id"): shade
-            for shade in shades_data.get("shades", [])
-        }
+        for category, response in (("lights", lights_data), ("shades", shades_data)):
+            for item in response.get(category, []):
+                device_id = item.get("id")
+                if device_id is None:
+                    continue
+                device = devices_by_id.setdefault(device_id, {})
+                subtype = next(
+                    (
+                        value
+                        for value in (
+                            item.get("subType"), device.get("subType"),
+                            item.get("type"), device.get("type"),
+                        )
+                        if value and value.lower() not in ("light", "shade")
+                    ),
+                    "",
+                )
+                device.update(item)
+                # A level field implies dimming only when no explicit subtype exists;
+                # switches also report a level.
+                if not subtype:
+                    if category == "shades":
+                        subtype = "Shade"
+                    else:
+                        subtype = "Dimmer" if "level" in device else "Switch"
+                device["subType"] = subtype
 
-        for device in devices_data.get("devices", []):
-            room_name = next(
-                (r.get("name", "") for r in self.rooms if r.get("id") == device.get("roomId")),
-                "",
+        room_names = {room["id"]: room.get("name", "") for room in self.rooms}
+        device_types = {"Dimmer": "light", "Switch": "light", "Shade": "shade"}
+        subtypes = {name.lower(): name for name in device_types}
+        devices: list[dict[str, Any]] = []
+        for device in devices_by_id.values():
+            subtype = device.get("subType") or device.get("type", "")
+            subtype = subtypes.get(subtype.lower(), subtype)
+            device_type = device_types.get(subtype)
+            # Do not replace failed state requests with generic identity stubs.
+            if (
+                device_type not in enabled_types
+                or device_type in failed_types
+            ):
+                continue
+            devices.append(
+                {
+                    **device,
+                    "subType": subtype,
+                    "roomName": room_names.get(device.get("roomId"), ""),
+                    "ha_device_type": device_type,
+                },
             )
 
-            device_id = device.get("id")
-            device_type = device.get("subType") or device.get("type", "")
-            level = 0
-            shade_position = 0
-            connection_status = "online"
-
-            if device_type in ("Dimmer", "Switch"):
-                # Merge level and connectionStatus from /lights endpoint
-                light = lights_by_id.get(device_id, {})
-                level = light.get("level", 0)
-                connection_status = light.get("connectionStatus", "online")
-            elif device_type == "Shade":
-                # Merge position and connectionStatus from /shades endpoint
-                shade = shades_by_id.get(device_id, {})
-                shade_position = shade.get("position", 0)
-                connection_status = shade.get("connectionStatus", "online")
-
-            ha_device_type = None
-            if device_type in ("Dimmer", "Switch"):
-                ha_device_type = "light"
-            elif device_type == "Shade":
-                ha_device_type = "shade"
-
-            device_info = {
-                "id": device_id,
-                "type": device.get("type", ""),
-                "subType": device.get("subType") or device.get("type", ""),
-                "name": device.get("name", ""),
-                "roomId": device.get("roomId"),
-                "roomName": room_name,
-                "level": level,
-                "status": device.get("status", False),
-                "position": shade_position,
-                "connectionStatus": connection_status,
-                "ha_device_type": ha_device_type,
-            }
-
-            # Add all devices regardless of type or ignored pattern
-            devices.append(device_info)
-            _LOGGER.debug("Added %s device: %s (ID: %s)",
-                         ha_device_type or "unknown", device_info["name"], device_info["id"])
-
-        # Process scenes - add all scenes regardless of enabled_types or ignored patterns
         for scene in scenes_data.get("scenes", []):
-            room_name = next(
-                (r.get("name", "") for r in self.rooms if r.get("id") == scene.get("roomId")),
-                "",
-            )
-
-            # Always set type to "Scene" regardless of the scene's type field
-            # This ensures shade scenes are treated as scenes, not shades
+            # Shade scenes must remain scenes rather than become cover entities.
             scene_info = {
                 "id": scene.get("id"),
                 "type": "Scene",
-                "subType": "Scene",  # Always use "Scene" as subType
-                "sceneType": scene.get("type", ""),  # Store original type as sceneType
+                "subType": "Scene",
+                "sceneType": scene.get("type", ""),
                 "name": scene.get("name", ""),
                 "roomId": scene.get("roomId"),
-                "roomName": room_name,
+                "roomName": room_names.get(scene.get("roomId"), ""),
                 "level": 0,
                 "status": scene.get("status", False),
                 "position": 0,
-                "connectionStatus": "n/a",  # Scenes don't have a physical connection status
+                "connectionStatus": "n/a",  # Scenes have no physical connection.
                 "ha_device_type": "scene",
             }
 
@@ -294,7 +292,7 @@ class CrestronClient:
                          scene_info["name"], scene_info["id"], scene_info["sceneType"])
 
         _LOGGER.debug("Found %d devices", len(devices))
-        return devices
+        return devices, failed_types
 
     async def get_device(self, device_id: int) -> Dict[str, Any]:
         """Get a specific device from the Crestron Home system."""
@@ -372,21 +370,10 @@ class CrestronClient:
         response = await self._api_request("GET", f"/scenes/{scene_id}")
         return response.get("scenes", [{}])[0]
 
-    async def get_sensors(self, ignored_device_names: List[str] = None) -> List[Dict[str, Any]]:
-        """Get all sensors from the Crestron Home system."""
-        # Get ignored device names from environment if not provided
-        if ignored_device_names is None:
-            ignored_device_names_str = os.environ.get("IGNORED_DEVICE_NAMES", "")
-            if ignored_device_names_str:
-                ignored_device_names = [name.strip() for name in ignored_device_names_str.split(",")]
-            else:
-                ignored_device_names = []
-        
-        response = await self._api_request("GET", "/sensors")
-        sensors = response.get("sensors", [])
-        
-        # Return all sensors without filtering
-        return sensors
+    async def get_sensors(self) -> list[dict[str, Any]] | None:
+        """Return sensor state, or None when the endpoint is unavailable."""
+        response = await self._poll_endpoint("/sensors")
+        return response.get("sensors", []) if response is not None else None
 
     async def get_sensor(self, sensor_id: int) -> Dict[str, Any]:
         """Get a specific sensor from the Crestron Home system."""
@@ -394,11 +381,13 @@ class CrestronClient:
         return response.get("sensors", [{}])[0]
 
     async def get_rooms(self) -> List[Dict[str, Any]]:
-        """Get all rooms from the Crestron Home system."""
+        """Cache room definitions for five minutes, including empty inventories."""
+        if time.monotonic() < self._rooms_expire_at:
+            return self.rooms
         response = await self._api_request("GET", "/rooms")
-        rooms = response.get("rooms", [])
-        self.rooms = rooms
-        return rooms
+        self.rooms = response.get("rooms", [])
+        self._rooms_expire_at = time.monotonic() + _ROOM_CACHE_TTL
+        return self.rooms
 
     @staticmethod
     def crestron_to_percentage(value: int) -> int:
