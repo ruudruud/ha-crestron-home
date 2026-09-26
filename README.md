@@ -25,21 +25,25 @@ Control Crestron Home lights, shades, thermostats, and scenes, and monitor senso
 | Door sensor | Binary sensor | Open/closed, battery status | No |
 | Photo sensor | Sensor | Illuminance | No |
 
-## Installation
+## 1. Install
 
-**HACS:** Open [HACS](https://hacs.xyz/), add `https://github.com/ruudruud/ha-crestron-home` under **Custom repositories** with category **Integration**, then download **Crestron Home** and restart Home Assistant.
+With [HACS installed](https://www.hacs.xyz/docs/use/download/download/), open the button below, download **Crestron Home**, then **restart Home Assistant**.
 
-**Manual:** Download the [latest release](https://github.com/ruudruud/ha-crestron-home/releases/latest), copy `custom_components/crestron_home` into your HA configuration's `custom_components` directory, and restart Home Assistant.
+[![Open Crestron Home in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ruudruud&repository=ha-crestron-home&category=integration)
 
-## Configuration
+**Manual installation:** Download and extract the [latest release](https://github.com/ruudruud/ha-crestron-home/releases/latest), copy `custom_components/crestron_home` into your HA configuration's `custom_components` directory, then restart Home Assistant.
+
+## 2. Add the integration
 
 1. In the Crestron Home Setup app, open **Installer Settings → System Control Options → Web API Settings**. Enable the API and copy its token. [Screenshot](images/web-api-settings.png)
-2. In HA, open **Settings → Devices & services → Add integration → Crestron Home**.
+2. Open the button below, or go to **Settings → Devices & services → Add integration → Crestron Home**.
 3. Enter the processor's IP address or hostname and API token, select device types, and submit.
 
-Thermostats are opt-in under device types. Scheduling is not supported; temperature controls require recognised units and reported limits.
+[![Add Crestron Home to Home Assistant](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=crestron_home)
 
-Optional settings:
+## Options
+
+Thermostats are opt-in under device types. Scheduling is not supported; temperature controls require recognised units and reported limits.
 
 - **Update interval:** Defaults to 15 seconds; minimum 10. Shorter intervals increase processor traffic.
 - **Hide patterns:** One pattern per entry, matched case-insensitively against room/device names and device types. `%example%` matches text containing “example”; `%` also works at just the start or end. Hidden entities remain polled. Removing a pattern unhides them unless you hid them manually.
@@ -47,6 +51,8 @@ Optional settings:
 Deselecting a device type removes its entities and their customizations. Re-enabling it creates them with default settings.
 
 ## Troubleshooting
+
+For bug reports, use the integration’s **Download diagnostics** action. It exports cached device capabilities and state without names, identifiers, addresses or credentials.
 
 - **Connection failures:** Check processor reachability, host settings, Web API access, and the token. Inspect HA logs for `crestron_home` errors. Entities recover automatically when successful polling resumes and devices report available.
 - **Missing devices:** Check selected device types, hide patterns, and the Crestron configuration. Reload the integration to discover newly added devices.

@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.0.2 (2026-09-26)
 
+- Add diagnostics downloads with identifying fields excluded.
+- Simplify installation and setup instructions.
 - Recognise drapery motors as shades.
 - Add opt-in thermostat support for temperatures, setpoints, system and fan modes (not yet hardware-tested).
 
