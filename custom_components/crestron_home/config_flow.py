@@ -165,6 +165,7 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                 )
                 await client.login()
                 
+                user_input.setdefault(CONF_IGNORED_DEVICE_NAMES, [])
                 return self.async_create_entry(title="", data=user_input)
             
             except CrestronConnectionError:
@@ -212,8 +213,12 @@ class CrestronHomeOptionsFlowHandler(config_entries.OptionsFlow):
                         ),
                     ),
                     vol.Optional(
-                        CONF_IGNORED_DEVICE_NAMES, 
-                        default=settings.get(CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES)
+                        CONF_IGNORED_DEVICE_NAMES,
+                        description={
+                            "suggested_value": settings.get(
+                                CONF_IGNORED_DEVICE_NAMES, DEFAULT_IGNORED_DEVICE_NAMES
+                            ),
+                        },
                     ): selector.TextSelector(
                         selector.TextSelectorConfig(
                             multiple=True,

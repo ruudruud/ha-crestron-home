@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.1 (2026-09-26)
+
+- Fix integration reloads after saving options or hide patterns.
+- Allow clearing the last hide pattern without restoring its previous value.
+- Keep devices with missing state discoverable and unavailable until state returns.
+- Isolate category polling failures and preserve last known device values.
+- Improve light and shade discovery and type normalization.
+- Skip disabled polling endpoints and cache room definitions.
+- Simplify setup and troubleshooting documentation.
+
 ## 1.0.0 (2026-09-26)
 
 - Retry instant light commands once when the server disconnects.
