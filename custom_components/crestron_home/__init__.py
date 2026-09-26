@@ -73,13 +73,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Register the Crestron Home controller as a device
     device_registry = async_get_device_registry(hass)
-    device_registry.async_get_or_create(
+    controller = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, host)},
         name=f"Crestron Home ({host})",
         manufacturer=MANUFACTURER,
         model=MODEL,
     )
+
+    coordinator.controller_device_id = controller.id
 
     # Set up only enabled platforms
     enabled_platforms = []

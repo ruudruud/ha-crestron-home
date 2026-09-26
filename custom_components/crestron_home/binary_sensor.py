@@ -89,7 +89,7 @@ class CrestronHomeBinarySensor(CrestronRoomEntity, CoordinatorEntity, BinarySens
             name=device.full_name,
             manufacturer=MANUFACTURER,
             model=MODEL,
-            via_device=(DOMAIN, coordinator.client.host),
+            via_device_id=coordinator.controller_device_id,
             suggested_area=device.room,
         )
     

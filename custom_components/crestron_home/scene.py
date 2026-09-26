@@ -81,7 +81,7 @@ class CrestronHomeScene(CrestronRoomEntity, CoordinatorEntity, Scene):
             name=device.full_name,
             manufacturer=MANUFACTURER,
             model=f"{MODEL} {scene_type}",  # Include scene type in model
-            via_device=(DOMAIN, coordinator.client.host),
+            via_device_id=coordinator.controller_device_id,
             suggested_area=device.room,
         )
     

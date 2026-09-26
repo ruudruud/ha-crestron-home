@@ -31,6 +31,7 @@ class CrestronHomeDataUpdateCoordinator(DataUpdateCoordinator):
     ) -> None:
         """Initialize the coordinator."""
         self.client = client
+        self.controller_device_id: str | None = None
         self.enabled_device_types = enabled_device_types
         self.ignored_device_names = ignored_device_names or []
         
